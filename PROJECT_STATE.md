@@ -1,9 +1,9 @@
 # Honour Shop — Project State & Continuation Guide
 
 > **Created:** 10/15/2026
-> **Last updated:** 10/21/2026
+> **Last updated:** 10/22/2026
 > **Purpose:** Pick up work in a new chat. Read this file first.
-> **Latest work (10/21/2026):** Shop Items **UI simplified** — removed the `isAvailable` status chip from the item card and added an **`Rs`** currency prefix to the price. `dart analyze` → **No issues found**.
+> **Latest work (10/22/2026):** **Facility Issues screen built** and wired into `HomeScreen`; **app title → "CBT"** (`MaterialApp`); **app icon generated** via `flutter_launcher_icons`; **theme system** added (`app_theme.dart` — full light + dark palettes, `ThemeMode.system`). `dart analyze` → **No issues found**.
 
 ---
 
@@ -13,7 +13,7 @@ Flutter app (`cbt_app`) that integrates with **Supabase** (Postgres + Auth + Sto
 Features:
 - **Shop Items** — add / view / **edit** / delete honour shop items (name, price, category, image). Edit UI added 10/20/2026.
 - **User Roles** — `admin`, `shop_manager`, `employee` (stored as Postgres ENUM `user_role`)
-- **Facility Issues** — report / track / resolve facility issues (schema exists, screen not yet built)
+- **Facility Issues** — report / track / resolve facility issues (schema + screen built 10/22/2026)
 - **User Management** — admin can view/change roles (screen exists: `user_management_screen.dart`)
 - **Auth** — Supabase email/password auth with profile auto-creation via trigger
 
@@ -26,17 +26,22 @@ lib/
     shop_item.dart
     user_profile.dart
   screens/
+    facility_issues_screen.dart   ← NEW (10/22/2026)
     home_screen.dart
     login_screen.dart
     shop_items_screen.dart
     user_management_screen.dart
   utils/
+    app_theme.dart                ← NEW (10/22/2026)
     env.dart
     supabase_client.dart
 
+assets/
+  app_icon.png                    ← NEW (10/22/2026)
+
 supabase/
   migrations/
-    04_patch_existing_schema.sql   ← NEW (this session)
+    04_patch_existing_schema.sql
 ```
 
 ---
@@ -161,7 +166,7 @@ Creates ENUMs (`user_role`, `issue_status`), tables (`profiles`, `shop_items`, `
 - [ ] **Run `04_patch_existing_schema.sql`** in Supabase SQL Editor
 - [ ] **E2E test the Shop Items screen** — as **admin/shop_manager**: add → tap the pencil → change name/price/category → save (verify the list refreshes **and** the Supabase Table Editor row updates) → swipe-delete. As **employee/simpleUser**: confirm view-only (no add/edit/delete; DB also blocks writes).
 - [ ] **Test role enforcement** — employee cannot add/delete; non-admin cannot change roles
-- [ ] **Facility Issues screen** — schema + model exist, but no UI screen yet
+- [x] **Facility Issues screen** — ✅ **DONE 10/22/2026**: full `FacilityIssuesScreen` built + wired into `HomeScreen` (§13)
 - [ ] **User Management screen** — verify it works with the new admin-update RLS policy
 - [ ] **Image upload** for shop items (only `facility-photos` bucket policies exist; need a second bucket or folder)
 - [x] **Item editing** — ✅ **DONE 10/20/2026**: edit pencil on each item tile + `_showEditItemDialog` (name/price/category) via `.update()`. `is_available` toggle **intentionally NOT added** (user decision — view-only for now).
@@ -259,8 +264,8 @@ The `mounted` guard also prevents a "setState called after dispose" crash if the
 - [ ] **E2E test edit end-to-end**: `flutter run` → log in as **admin** or **shop_manager** → tap the pencil on an item → change name/price/category → save → confirm the list refreshes **and** the Supabase row updated. Then swipe-delete and confirm removal.
 - [ ] Confirm a **simpleUser/employee** login sees **no** add/edit/delete controls (view-only).
 
-### Known open items (unchanged)
-- Facility Issues UI screen (schema + model exist, no screen yet)
+### Known open items (updated 10/22/2026)
+- ~~Facility Issues UI screen~~ → **Built** (§13, 10/22/2026)
 - Image upload for shop items (needs its own bucket/folder)
 - Category search/filter on the Shop Items screen
 - Logout button / user info on home screen
@@ -292,8 +297,94 @@ The card now shows, top to bottom: **Category chip → Name → `Rs` price → E
 - [ ] Visual check on device/emulator: confirm each card shows **category chip, name, `Rs`-prefixed price** and (for `admin` / `shop_manager`) the **edit pencil** — and that no availability chip remains.
 - [ ] (Optional) If the `is_available` field is now unused everywhere, consider removing it from `shop_item.dart` + the DB column to keep the schema lean.
 
-### Known open items (unchanged)
-- Facility Issues UI screen (schema + model exist, no screen yet)
+### Known open items (updated 10/22/2026)
+- ~~Facility Issues UI screen~~ → **Built** (§13, 10/22/2026)
 - Image upload for shop items (needs its own bucket/folder)
 - Category search/filter on the Shop Items screen
 - Logout button / user info on home screen
+
+---
+
+## 13. Facility Issues Screen — Built (10/22/2026)
+
+**Goal:** Provide a full Facility Issues screen for reporting and tracking issues, wired into the home-screen navigation.
+
+### What was built
+| Item | Detail |
+|---|---|
+| File | `lib/screens/facility_issues_screen.dart` (new) |
+| Home screen nav | `home_screen.dart` — added **Facility Issues** tile (icon: `Icons.report_problem`, subtitle: "Report & track facility issues") with `Navigator.push` to `FacilityIssuesScreen` |
+| Auth guard | `StreamBuilder` on `Supabase.instance.client.auth.onAuthStateChange` — unauthenticated users redirected to `LoginScreen` (same pattern as other screens) |
+| `mounted` guards | All post-`await` state mutations wrapped in `if (mounted) setState(...)` to prevent `use_build_context_synchronously` lints |
+
+### Verified
+- `dart analyze` → **No issues found** (0 errors / 0 warnings / 0 info).
+- Facility Issues tile appears on the home screen for all authenticated roles.
+
+### Superseded
+- §7 TODO and §11/§12 "Known open items" listed *"Facility Issues UI screen (schema + model exist, no screen yet)"* — **now resolved**.
+
+---
+
+## 14. App Branding — Title & Icon (10/22/2026)
+
+**Goal:** Establish the "CBT" brand in the app title and generate a custom launcher icon.
+
+### Changes
+
+#### `lib/main.dart`
+| What | Before | After |
+|---|---|---|
+| `MaterialApp` title | (previous value) | `'CBT App'` |
+
+> `lib/screens/home_screen.dart` — `AppBar` title remains **`Text('Convergent')`** (unchanged, confirmed in screenshot).
+
+#### `pubspec.yaml`
+| What | Change |
+|---|---|
+| `dev_dependencies` | Added `flutter_launcher_icons: ^0.14.3` |
+| End of file | Added `flutter_launcher_icons:` config block — `android: true`, `ios: false`, `image_path: "assets/app_icon.png"` |
+
+#### App icon
+| What | Detail |
+|---|---|
+| Icon source | `assets/app_icon.png` (generated) |
+| Generation command | `dart run flutter_launcher_icons` |
+| Platform | Android enabled, iOS disabled |
+
+### Verified
+- `assets/app_icon.png` present in the project.
+- `dart analyze` → **No issues found**.
+
+---
+
+## 15. Theme System — Light & Dark (10/22/2026)
+
+**Goal:** Introduce a full brand-aligned light + dark theme and wire it into `MaterialApp`.
+
+### Files
+
+#### `lib/utils/app_theme.dart` (new)
+| Section | What it provides |
+|---|---|
+| `AppColors` | Static color constants — greens (`#00994D` primary, `#0A6C3B` secondary), amber accent (`#F5A623`), green-tinted neutrals, and full dark-mode variants (bg `#0B1612`, surface `#15221C`, dark primary `#22C55E`) |
+| `AppTheme` | `static ThemeData get light` / `static ThemeData get dark` — complete `ThemeData` for both modes: `colorScheme`, `appBarTheme`, `cardTheme`, `inputDecorationTheme`, `bottomSheetTheme`, `dialogTheme`, `dividerTheme`, `progressIndicatorTheme`, `switchTheme`, `radioTheme`, `checkboxTheme`, `searchBarTheme`, `tabBarTheme`, `textSelectionTheme`, `floatingActionButtonTheme` |
+
+#### `lib/main.dart`
+| What | Value |
+|---|---|
+| `theme` | `AppTheme.light` |
+| `darkTheme` | `AppTheme.dark` |
+| `themeMode` | `ThemeMode.system` — app follows the device OS brightness setting |
+| `debugShowCheckedModeBanner` | `false` |
+
+### Decision: No in-app dark mode toggle
+- The app has **no** `SharedPreferences`-backed toggle or time-based logic.
+- Dark mode is **purely OS-driven** (`ThemeMode.system`).
+- **User confirmed (10/22/2026): keep as-is** — no code change needed.
+- If a toggle is added later: swap `ThemeMode.system` for `ThemeMode.light` / `ThemeMode.dark` and persist the choice via `SharedPreferences`.
+
+### Verified
+- `dart analyze lib/utils/app_theme.dart` → **No issues found**.
+- **Light mode**: white background, green-tinted surfaces, emerald primary (`#00994D`).
+- **Dark mode**: deep green-black background (`#0B1612`), green-tinted surfaces, bright green primary (`#22C55E`).

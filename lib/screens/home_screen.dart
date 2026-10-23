@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cbt_app/models/user_profile.dart';
+import 'package:cbt_app/screens/facility_issues_screen.dart';
 import 'package:cbt_app/screens/shop_items_screen.dart';
 import 'package:cbt_app/screens/user_management_screen.dart';
 
@@ -26,8 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final uid = Supabase.instance.client.auth.currentUser?.id;
       _fullName =
           Supabase.instance.client.auth.currentUser?.userMetadata?['full_name']
-                  as String? ??
-              'User';
+              as String? ??
+          'User';
       if (uid == null) {
         _userRole = UserRole.simpleUser;
         _isLoading = false;
@@ -40,6 +41,8 @@ class _HomeScreenState extends State<HomeScreen> {
           .limit(1)
           .maybeSingle();
 
+      if (!mounted) return;
+
       if (row == null) {
         // No profile row exists (e.g. the account predates the
         // handle_new_user trigger) — recreate it as a plain employee
@@ -47,7 +50,12 @@ class _HomeScreenState extends State<HomeScreen> {
         await Supabase.instance.client.from('profiles').upsert({
           'id': uid,
           'full_name':
-              Supabase.instance.client.auth.currentUser?.userMetadata?['full_name']
+              Supabase
+                      .instance
+                      .client
+                      .auth
+                      .currentUser
+                      ?.userMetadata?['full_name']
                   as String? ??
               'User',
           'role': 'employee',
@@ -59,6 +67,8 @@ class _HomeScreenState extends State<HomeScreen> {
             .eq('id', uid)
             .limit(1)
             .maybeSingle();
+
+        if (!mounted) return;
 
         setState(() {
           _userRole = recreated != null
@@ -74,6 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         _userRole = UserRole.simpleUser;
         _isLoading = false;
@@ -83,16 +94,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (Supabase.instance.client.auth.currentUser == null)
+    if (Supabase.instance.client.auth.currentUser == null) {
       return const Scaffold();
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Honour Shop — ${_userRole?.displayName ?? ''}'),
+        title: Text('Convergent'),
         centerTitle: true,
         actions: [
           TextButton(
             onPressed: () => Supabase.instance.client.auth.signOut(),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            ),
             child: const Text('Sign Out'),
           ),
         ],
@@ -105,20 +120,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   CircleAvatar(
                     radius: 44,
-                    backgroundColor: Colors.blue.shade100,
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer,
                     child: Text(
-                        _fullName.isNotEmpty
-                            ? _fullName[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
-                            fontSize: 36,
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold)),
+                      _fullName.isNotEmpty ? _fullName[0].toUpperCase() : '?',
+                      style: TextStyle(
+                        fontSize: 36,
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  Text(_fullName,
-                      style: const TextStyle(
-                          fontSize: 20, fontWeight: FontWeight.w600)),
+                  Text(
+                    _fullName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   _roleBadge(),
                   const SizedBox(height: 36),
@@ -130,11 +151,26 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: Icons.storefront,
                           title: 'Shop Items',
                           subtitle: 'Browse & manage shop inventory',
-                          color: Colors.blue,
+                          color: Theme.of(context).colorScheme.primary,
                           onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const ShopItemsScreen())),
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ShopItemsScreen(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _buildNavCard(
+                          icon: Icons.report_problem,
+                          title: 'Facility Issues',
+                          subtitle: 'Report & track facility issues',
+                          color: Colors.teal.shade700,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const FacilityIssuesScreen(),
+                            ),
+                          ),
                         ),
                         if (_userRole == UserRole.admin) ...[
                           const SizedBox(height: 14),
@@ -144,10 +180,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             subtitle: 'Assign roles to users',
                             color: Colors.deepPurple,
                             onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const UserManagementScreen())),
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const UserManagementScreen(),
+                              ),
+                            ),
                           ),
                         ],
                       ],
@@ -163,17 +200,22 @@ class _HomeScreenState extends State<HomeScreen> {
     final color = _userRole == UserRole.admin
         ? Colors.red
         : _userRole == UserRole.shopManager
-            ? Colors.orange.shade700
-            : Colors.blueGrey;
+        ? Colors.orange.shade700
+        : Colors.blueGrey;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-          color: color.withAlpha(30),
-          borderRadius: BorderRadius.circular(20)),
+        color: color.withAlpha(30),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Text(
-          _userRole?.displayName ?? 'User',
-          style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        _userRole?.displayName ?? 'User',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
     );
   }
 
@@ -187,8 +229,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: color.withAlpha(40))),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: color.withAlpha(40)),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -199,8 +242,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                    color: color.withAlpha(30),
-                    borderRadius: BorderRadius.circular(14)),
+                  color: color.withAlpha(30),
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 child: Icon(icon, size: 30, color: color),
               ),
               const SizedBox(width: 16),
@@ -208,13 +252,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 3),
-                    Text(subtitle,
-                        style: TextStyle(
-                            fontSize: 13, color: Colors.grey.shade600)),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -226,4 +278,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-

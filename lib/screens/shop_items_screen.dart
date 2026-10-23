@@ -424,14 +424,14 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 item.category,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.blue.shade700,
+                  color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -487,8 +487,6 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Honour Shop'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
         actions: [
           if (_canManageItems)
             IconButton(

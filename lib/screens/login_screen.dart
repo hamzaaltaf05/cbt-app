@@ -21,8 +21,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_isSignUp ? 'Sign Up' : 'Sign In'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -122,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   _isSignUp
                       ? 'Already have an account? Sign In'
                       : "Don't have an account? Sign Up",
-                  style: const TextStyle(color: Colors.blue),
+                  style: TextStyle(color: Theme.of(context).colorScheme.primary),
                 ),
               ),
             ],
