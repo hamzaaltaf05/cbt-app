@@ -1,0 +1,11 @@
+﻿Analyzing cbt_app...
+
+  error - lib\screens\home_screen.dart:2:8 - Target of URI doesn't exist: '../models/user.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist. - uri_does_not_exist
+  error - lib\screens\home_screen.dart:3:8 - Target of URI doesn't exist: '../services/supabase_service.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist. - uri_does_not_exist
+  error - lib\screens\home_screen.dart:11:18 - Undefined name 'Supabase'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - lib\screens\home_screen.dart:12:36 - Undefined name 'UserRole'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - lib\screens\home_screen.dart:17:44 - Invalid constant value. - invalid_constant
+  error - lib\screens\home_screen.dart:23:30 - Undefined name 'Supabase'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+   info - lib\screens\home_screen.dart:12:11 - The local variable '_isAdmin' starts with an underscore. Try renaming the variable to not start with an underscore. - no_leading_underscores_for_local_identifiers
+
+7 issues found.

@@ -56,7 +56,7 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
     try {
       final rows = await Supabase.instance.client
           .from('facility_issues')
-          .select('*, profiles(full_name)')
+          .select('*, profiles!facility_issues_reported_by_key(full_name)')
           .order('created_at', ascending: false)
           ;
       _issues = rows.map((row) => FacilityIssue.fromMap(row)).toList();
@@ -508,10 +508,9 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
+                    ? SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.error_outline,
@@ -528,15 +527,12 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
                                   onPressed: _loadIssues,
                                   icon: const Icon(Icons.refresh),
                                   label: const Text('Try Again')),
-                            ],
-                          ),
-                        ),
+                            ]),
                       )
                     : _issues.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(32),
-                              child: Column(
+                        ? SingleChildScrollView(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(Icons.description_outlined,
@@ -544,6 +540,7 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
                                   const SizedBox(height: 16),
                                   Text(
                                     'No issues reported yet',
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
@@ -552,13 +549,12 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
                                   const SizedBox(height: 6),
                                   Text(
                                     'Tap "Report" to be the first!',
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
                                         fontSize: 13,
                                         color: Colors.grey.shade400),
                                   ),
-                                ],
-                              ),
-                            ),
+                                ]),
                           )
                         : RefreshIndicator(
                             onRefresh: _loadIssues,
