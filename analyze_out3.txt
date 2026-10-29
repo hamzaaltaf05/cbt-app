@@ -1,0 +1,17 @@
+﻿Analyzing cbt_app...                                            
+
+  error - Target of URI doesn't exist: '../models/user.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist - lib\screens\home_screen.dart:2:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: '../services/supabase_service.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist - lib\screens\home_screen.dart:3:8 - uri_does_not_exist
+  error - Undefined name 'Supabase'. Try correcting the name to one that is defined, or defining the name - lib\screens\home_screen.dart:11:18 - undefined_identifier
+   info - The local variable '_isAdmin' starts with an underscore. Try renaming the variable to not start with an underscore - lib\screens\home_screen.dart:12:11 - no_leading_underscores_for_local_identifiers
+  error - Undefined name 'UserRole'. Try correcting the name to one that is defined, or defining the name - lib\screens\home_screen.dart:12:36 - undefined_identifier
+  error - Invalid constant value - lib\screens\home_screen.dart:17:44 - invalid_constant
+  error - Undefined name 'Supabase'. Try correcting the name to one that is defined, or defining the name - lib\screens\home_screen.dart:23:30 - undefined_identifier
+
+flutter.bat : 7 issues found. (ran in 5.8s)
+At line:1 char:1
++ & 'C:\Users\HamzaAltaf\develop\flutter\bin\flutter.bat' analyze --no- ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (7 issues found. (ran in 5.8s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

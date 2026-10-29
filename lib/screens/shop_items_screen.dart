@@ -364,6 +364,146 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
     }
   }
 
+  /// Soft "Available" / "Unavailable" chip shown on cards and in the sheet.
+  Widget _availabilityChip(bool isAvailable) {
+    final (bg, fg) = isAvailable
+        ? (Colors.green.withValues(alpha: 0.14), Colors.green.shade700)
+        : (Colors.red.withValues(alpha: 0.14), Colors.red.shade700);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isAvailable ? Icons.check_circle : Icons.block,
+            size: 11,
+            color: fg,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            isAvailable ? 'Available' : 'Unavailable',
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Bottom sheet shown when any user taps an item card.
+  /// Offers the availability action for that item.
+  void _showItemSheet(ShopItem item) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  _availabilityChip(item.isAvailable),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(
+                item.isAvailable
+                    ? Icons.remove_circle_outline
+                    : Icons.add_circle_outline,
+                color: item.isAvailable ? Colors.red : Colors.green,
+              ),
+              title: Text(
+                item.isAvailable ? 'Mark as unavailable' : 'Mark as available',
+              ),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await _confirmSetAvailability(item, !item.isAvailable);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Confirmation dialog → RPC toggle → list refresh.
+  Future<void> _confirmSetAvailability(
+    ShopItem item,
+    bool makeAvailable,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          makeAvailable ? 'Mark as available' : 'Mark as unavailable',
+        ),
+        content: Text(
+          'Are you sure you want to mark "${item.name}" as '
+          '${makeAvailable ? 'available' : 'unavailable'}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: makeAvailable ? Colors.green : Colors.red,
+            ),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await Supabase.instance.client.rpc(
+        'set_shop_item_availability',
+        params: {'p_id': item.id, 'p_is_available': makeAvailable},
+      );
+      await _loadItems();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              makeAvailable
+                  ? 'Item marked as available'
+                  : 'Item marked as unavailable',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
+    }
+  }
+
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -373,8 +513,10 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
             child: TextField(
               controller: _searchController,
               onChanged: (_) => setState(() {}),
+              style: const TextStyle(fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'Search by name or category…',
+                hintText: 'Search by name',
+                hintStyle: const TextStyle(fontSize: 12),
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -400,11 +542,15 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
               borderRadius: BorderRadius.circular(12),
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 10),
+                contentPadding: EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 10,
+                ),
               ),
-              items: ['All', ...kShopCategories]
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
+              items: [
+                'All',
+                ...kShopCategories,
+              ].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
               onChanged: (value) =>
                   setState(() => _selectedCategory = value ?? 'All'),
             ),
@@ -414,54 +560,88 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
     );
   }
 
+  /// Returns a soft (background, foreground) color pair for a shop category.
+  /// Each category gets a distinct tinted chip so the list is easy to scan.
+  (Color, Color) _categoryChipColors(String category) {
+    switch (category) {
+      case 'Beverages':
+        return (Colors.blue.withValues(alpha: 0.16), Colors.blue.shade600);
+      case 'Crisps':
+        return (Colors.orange.withValues(alpha: 0.16), Colors.orange.shade700);
+      case 'Biscuits':
+        return (Colors.brown.withValues(alpha: 1), Colors.brown.shade100);
+      case 'Mints & Gums':
+        return (Colors.teal.withValues(alpha: 0.16), Colors.teal.shade600);
+      default:
+        return (Colors.grey.withValues(alpha: 0.18), Colors.grey.shade600);
+    }
+  }
+
   Widget _buildItemTile(ShopItem item) {
-    final card = Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                item.category,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.bold,
+    final (chipBg, chipFg) = _categoryChipColors(item.category);
+    final scheme = Theme.of(context).colorScheme;
+    final card = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _showItemSheet(item),
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: chipBg,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Text(
+                  item.category,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: chipFg,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: item.isAvailable
+                            ? scheme.onSurface
+                            : scheme.onSurface.withValues(alpha: 0.65),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    _availabilityChip(item.isAvailable),
+                  ],
+                ),
               ),
-            ),
-            Text(
-              'Rs ${item.price.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            if (_canManageItems)
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 20),
-                tooltip: 'Edit item',
-                onPressed: () => _showEditItemDialog(item),
+              Text(
+                'Rs ${item.price.round()}',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: item.isAvailable
+                      ? scheme.primary
+                      : scheme.primary.withValues(alpha: 0.6),
+                ),
               ),
-          ],
+              if (_canManageItems)
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  tooltip: 'Edit item',
+                  onPressed: () => _showEditItemDialog(item),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -500,74 +680,77 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
           _buildSearchBar(),
           Expanded(
             child: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _error!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _loadProfileAndItems,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : _filteredItems.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _isFiltering
-                        ? Icons.search_off_outlined
-                        : Icons.storefront_outlined,
-                    size: 64,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _isFiltering
-                        ? 'No items match your search.'
-                        : 'No items in the shop yet.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-                  ),
-                  if (!_isFiltering && _canManageItems) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Add items using the + button.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade500,
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: Colors.red,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _loadProfileAndItems,
+                            child: const Text('Retry'),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadItems,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                children: _filteredItems.map(_buildItemTile).toList(),
-              ),
-            ),
+                  )
+                : _filteredItems.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _isFiltering
+                              ? Icons.search_off_outlined
+                              : Icons.storefront_outlined,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _isFiltering
+                              ? 'No items match your search.'
+                              : 'No items in the shop yet.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        if (!_isFiltering && _canManageItems) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Add items using the + button.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadItems,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      children: _filteredItems.map(_buildItemTile).toList(),
+                    ),
+                  ),
           ),
         ],
       ),

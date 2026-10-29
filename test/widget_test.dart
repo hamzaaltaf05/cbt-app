@@ -1,30 +1,29 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Smoke test: renders the app's authentication entry point (the login screen)
+// and verifies the core form is built. We pump LoginScreen directly — rather
+// than MyApp — so the test has no dependency on a live Supabase session or
+// network, keeping it fast and deterministic under `flutter test`.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cbt_app/main.dart';
+import 'package:cbt_app/screens/login_screen.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('login screen renders its authentication form',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // The sign-in heading appears in the app bar and on the submit button.
+    expect(find.text('Sign In'), findsWidgets);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Email and password fields are present in the default sign-in mode.
+    expect(find.byType(TextFormField), findsNWidgets(2));
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Core input affordances.
+    expect(find.byIcon(Icons.email), findsOneWidget);
+    expect(find.byIcon(Icons.lock), findsOneWidget);
+
+    // The toggle to switch between sign-in and sign-up.
+    expect(find.text("Don't have an account? Sign Up"), findsOneWidget);
   });
 }

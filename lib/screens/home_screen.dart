@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:cbt_app/models/user_profile.dart';
-import 'package:cbt_app/screens/facility_issues_screen.dart';
-import 'package:cbt_app/screens/shop_items_screen.dart';
-import 'package:cbt_app/screens/user_management_screen.dart';
+
+import '../models/user_profile.dart';
+import '../utils/responsive.dart';
+import 'shop_items_screen.dart';
+import 'facility_issues_screen.dart';
+import 'user_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  UserRole? _userRole;
-  String _fullName = 'User';
   bool _isLoading = true;
+  bool _isAdmin = false;
+  String _displayName = 'there';
 
   @override
   void initState() {
@@ -22,71 +25,35 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadProfile();
   }
 
+  /// Loads the signed-in user's name and role from the `profiles` table,
+  /// falling back to the email local-part until that resolves.
   Future<void> _loadProfile() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    var name = user?.email != null ? user!.email!.split('@').first : 'there';
+    var role = UserRole.simpleUser;
+
     try {
-      final uid = Supabase.instance.client.auth.currentUser?.id;
-      _fullName =
-          Supabase.instance.client.auth.currentUser?.userMetadata?['full_name']
-              as String? ??
-          'User';
-      if (uid == null) {
-        _userRole = UserRole.simpleUser;
-        _isLoading = false;
-        return;
-      }
-      final row = await Supabase.instance.client
-          .from('profiles')
-          .select()
-          .eq('id', uid)
-          .limit(1)
-          .maybeSingle();
-
-      if (!mounted) return;
-
-      if (row == null) {
-        // No profile row exists (e.g. the account predates the
-        // handle_new_user trigger) — recreate it as a plain employee
-        // instead of silently falling back to Simple User.
-        await Supabase.instance.client.from('profiles').upsert({
-          'id': uid,
-          'full_name':
-              Supabase
-                      .instance
-                      .client
-                      .auth
-                      .currentUser
-                      ?.userMetadata?['full_name']
-                  as String? ??
-              'User',
-          'role': 'employee',
-        });
-
-        final recreated = await Supabase.instance.client
+      if (user != null) {
+        final rows = await Supabase.instance.client
             .from('profiles')
             .select()
-            .eq('id', uid)
+            .eq('id', user.id)
             .limit(1)
             .maybeSingle();
-
-        if (!mounted) return;
-
-        setState(() {
-          _userRole = recreated != null
-              ? UserProfile.fromMap(recreated).role
-              : UserRole.simpleUser;
-          _isLoading = false;
-        });
-        return;
+        if (rows != null) {
+          final profile = UserProfile.fromMap(rows);
+          if (profile.fullName.isNotEmpty) name = profile.fullName;
+          role = profile.role;
+        }
       }
-
-      setState(() {
-        _userRole = UserProfile.fromMap(row).role;
-        _isLoading = false;
-      });
     } catch (_) {
-      if (!mounted) return;
+      // Keep fallback name/role on failure.
+    }
+
+    if (mounted) {
       setState(() {
-        _userRole = UserRole.simpleUser;
+        _displayName = name;
+        _isAdmin = role == UserRole.admin;
         _isLoading = false;
       });
     }
@@ -94,183 +61,137 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (Supabase.instance.client.auth.currentUser == null) {
-      return const Scaffold();
-    }
+    final first = _displayName.split(' ').first;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Convergent'),
-        centerTitle: true,
+        title: Text('Welcome back, $_displayName'),
         actions: [
-          TextButton(
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
             onPressed: () => Supabase.instance.client.auth.signOut(),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            ),
-            child: const Text('Sign Out'),
           ),
+          const SizedBox(width: 8),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(24),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: Responsive.maxContentWidth(context),
+            ),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: Responsive.pagePadding(context),
+                vertical: 24,
+              ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 44,
-                    backgroundColor: Theme.of(context)
-                        .colorScheme
-                        .primaryContainer,
-                    child: Text(
-                      _fullName.isNotEmpty ? _fullName[0].toUpperCase() : '?',
-                      style: TextStyle(
-                        fontSize: 36,
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
                   Text(
-                    _fullName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
+                    'What do you need today, $first?',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  _roleBadge(),
-                  const SizedBox(height: 36),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      children: [
-                        _buildNavCard(
-                          icon: Icons.storefront,
-                          title: 'Shop Items',
-                          subtitle: 'Browse & manage shop inventory',
-                          color: Theme.of(context).colorScheme.primary,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ShopItemsScreen(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        _buildNavCard(
-                          icon: Icons.report_problem,
-                          title: 'Facility Issues',
-                          subtitle: 'Report & track facility issues',
-                          color: Colors.teal.shade700,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const FacilityIssuesScreen(),
-                            ),
-                          ),
-                        ),
-                        if (_userRole == UserRole.admin) ...[
-                          const SizedBox(height: 14),
-                          _buildNavCard(
-                            icon: Icons.manage_accounts,
-                            title: 'User Management',
-                            subtitle: 'Assign roles to users',
-                            color: Colors.deepPurple,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const UserManagementScreen(),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                  Text(
+                    'Pick a service to get started.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  if (_isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else
+                    _buildTilesGrid(context, _isAdmin),
                 ],
               ),
             ),
-    );
-  }
-
-  Widget _roleBadge() {
-    final color = _userRole == UserRole.admin
-        ? Colors.red
-        : _userRole == UserRole.shopManager
-        ? Colors.orange.shade700
-        : Colors.blueGrey;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withAlpha(30),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        _userRole?.displayName ?? 'User',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildNavCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  /// Responsive dashboard grid: a single row of wide tiles in landscape /
+  /// wide screens, and a 2-column grid in narrow (portrait) screens.
+  Widget _buildTilesGrid(BuildContext context, bool isAdmin) {
+    final columns = Responsive.isLandscape(context) ? 4 : 2;
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: columns,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.4,
+      children: [
+        _buildTile(
+          Icons.storefront_outlined,
+          'Honour Shop',
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ShopItemsScreen()),
+          ),
+        ),
+        _buildTile(
+          Icons.report_problem_outlined,
+          'Facility Issues',
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const FacilityIssuesScreen()),
+          ),
+        ),
+        if (isAdmin)
+          _buildTile(
+            Icons.manage_accounts,
+            'User Management',
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const UserManagementScreen()),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTile(IconData icon, String label, VoidCallback onTap) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: color.withAlpha(40)),
-      ),
+      margin: EdgeInsets.zero,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                  color: color.withAlpha(30),
+                  color: scheme.primaryContainer,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, size: 30, color: color),
+                child: Icon(icon, color: scheme.primary, size: 30),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onSurface,
                 ),
               ),
-              Icon(Icons.chevron_right, color: Colors.grey.shade400),
             ],
           ),
         ),
