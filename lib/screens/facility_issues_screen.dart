@@ -602,9 +602,11 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
                     color: Colors.grey.shade500,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    reporterName,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  Expanded(
+                    child: Text(
+                      reporterName,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Icon(Icons.schedule, size: 13, color: Colors.grey.shade500),
@@ -614,7 +616,7 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                   if (_isAdmin) ...[
-                    const Spacer(),
+                    const SizedBox(width: 12),
                     Text(
                       'Tap to manage ›',
                       style: TextStyle(
@@ -643,7 +645,7 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 60, 20, 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: const BorderRadius.vertical(
                 bottom: Radius.circular(24),
               ),

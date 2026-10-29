@@ -123,17 +123,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Loading indicator and submit button
-                    if (_isLoading)
-                      const CircularProgressIndicator()
-                    else
-                      ElevatedButton(
-                        onPressed: _handleAuth,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                        ),
-                        child: Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+                    // Submit button (shows a compact spinner while loading)
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _handleAuth,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
                       ),
+                      child: _isLoading
+                          ? SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color:
+                                    Theme.of(context).colorScheme.onPrimary,
+                              ),
+                            )
+                          : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+                    ),
 
                     const SizedBox(height: 16),
 
