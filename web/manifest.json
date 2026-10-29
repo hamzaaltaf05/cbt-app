@@ -1,6 +1,6 @@
 {
-    "name": "cbt_app",
-    "short_name": "cbt_app",
+    "name": "Convergent",
+    "short_name": "Convergent",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
