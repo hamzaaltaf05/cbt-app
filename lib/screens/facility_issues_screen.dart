@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cbt_app/models/facility_issue.dart';
 import 'package:cbt_app/models/user_profile.dart';
+import 'package:cbt_app/utils/relative_time.dart';
+import 'package:cbt_app/screens/facility_issue_detail_screen.dart';
 
 class FacilityIssuesScreen extends StatefulWidget {
   const FacilityIssuesScreen({super.key});
@@ -161,11 +164,21 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
   bool _isLoading = true;
   String? _error;
   UserRole? _userRole;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   bool get _isAdmin => _userRole == UserRole.admin;
@@ -296,158 +309,6 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
     }
   }
 
-  Future<void> _showAdminDialog(FacilityIssue issue) async {
-    final responseController = TextEditingController(
-      text: issue.adminResponse ?? '',
-    );
-    String selectedStatus = _statusToDbValue(issue.status);
-
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(
-            issue.title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Description',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  issue.description,
-                  style: const TextStyle(fontSize: 14, height: 1.4),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Status',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: DropdownButton<String>(
-                    value: selectedStatus,
-                    underline: Container(),
-                    isExpanded: true,
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'pending',
-                        child: Text('⏳ Pending'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'in_progress',
-                        child: Text('🔧 In Progress'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'resolved',
-                        child: Text('✅ Resolved'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'rejected',
-                        child: Text('❌ Rejected'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setDialogState(() => selectedStatus = value);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Admin Response',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: responseController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: 'Add a response or note...',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Save Changes'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (saved != true) return;
-
-    try {
-      await Supabase.instance.client
-          .from('facility_issues')
-          .update({
-            'status': selectedStatus,
-            'admin_response': responseController.text.trim().isEmpty
-                ? null
-                : responseController.text.trim(),
-          })
-          .eq('id', issue.id);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Issue updated successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-      _loadIssues();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
-  String _statusToDbValue(IssueStatus status) {
-    switch (status) {
-      case IssueStatus.inProgress:
-        return 'in_progress';
-      default:
-        return status.name;
-    }
-  }
-
   Color _statusColor(IssueStatus status) {
     switch (status) {
       case IssueStatus.pending:
@@ -474,11 +335,6 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
     }
   }
 
-  String _formatDate(DateTime dt) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${dt.year}-${two(dt.month)}-${two(dt.day)}';
-  }
-
   Widget _buildIssueTile(FacilityIssue issue) {
     final reporterName = _reporterNames[issue.reportedBy] ?? 'Unknown';
     final statusColor = _statusColor(issue.status);
@@ -491,7 +347,7 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
         side: BorderSide(color: statusColor.withAlpha(60)),
       ),
       child: InkWell(
-        onTap: _isAdmin ? () => _showAdminDialog(issue) : null,
+        onTap: () => FacilityIssueDetailScreen.show(context, issue),
         borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -511,6 +367,28 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (issue.isDeletionRequested) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withAlpha(40),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.red),
+                      ),
+                      child: const Text(
+                        'Deletion requested',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -612,20 +490,9 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
                   Icon(Icons.schedule, size: 13, color: Colors.grey.shade500),
                   const SizedBox(width: 4),
                   Text(
-                    _formatDate(issue.createdAt),
+                    relativeTime(issue.createdAt),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
-                  if (_isAdmin) ...[
-                    const SizedBox(width: 12),
-                    Text(
-                      'Tap to manage ›',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.blue.shade400,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ],

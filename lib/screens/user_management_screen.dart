@@ -54,7 +54,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     try {
       await Supabase.instance.client
           .from('profiles')
-          .update({'role': newRole.label})
+          .update({'role': newRole.value})
           .eq('id', user.id)
           ;
 
@@ -85,6 +85,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         return Colors.orange;
       case UserRole.simpleUser:
         return Colors.blueGrey;
+      case UserRole.officeAdmin:
+        return Colors.teal;
     }
   }
 
