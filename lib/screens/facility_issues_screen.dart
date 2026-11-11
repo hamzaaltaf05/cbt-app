@@ -512,7 +512,7 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 60, 20, 16),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+              color: Theme.of(context).colorScheme.primary,
               borderRadius: const BorderRadius.vertical(
                 bottom: Radius.circular(24),
               ),
@@ -538,6 +538,7 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -547,7 +548,7 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
                               : 'View all reports',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.grey.shade500,
+                            color: Colors.white70,
                           ),
                         ),
                       ],
@@ -555,7 +556,8 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
                     ElevatedButton(
                       onPressed: () => _showCreateDialog(),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black87,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 10,
@@ -567,11 +569,11 @@ class _FacilityIssuesScreenState extends State<FacilityIssuesScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.add, size: 18),
+                          Icon(Icons.add, size: 18, color: Colors.black87),
                           SizedBox(width: 6),
                           Text(
                             'Report',
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
                           ),
                         ],
                       ),

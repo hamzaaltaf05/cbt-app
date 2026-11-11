@@ -82,7 +82,7 @@ class FacilityIssue {
     return FacilityIssue(
       id: map['id'] as String,
       title: (map['title'] as String?) ?? '',
-      description: map['description'] as String,
+      description: (map['description'] as String?) ?? '',
       status: IssueStatus.fromValue(map['status'] as String?),
       reportedBy: (map['reported_by'] as String?) ?? '',
       createdAt: DateTime.parse(map['created_at'] as String),

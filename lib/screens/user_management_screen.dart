@@ -171,6 +171,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   value: UserRole.simpleUser,
                   child: Text('Simple User'),
                 ),
+                DropdownMenuItem(
+                  value: UserRole.officeAdmin,
+                  child: Text('Office Admin'),
+                ),
               ],
               onChanged: isSelf
                   ? null

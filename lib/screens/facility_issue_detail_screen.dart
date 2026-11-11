@@ -17,12 +17,10 @@ class FacilityIssueDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Issue Details', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black87), onPressed: () => Navigator.pop(context)),
+        title: const Text('Issue Details', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -33,25 +31,56 @@ class FacilityIssueDetailScreen extends StatelessWidget {
           ],
           _IssueCard(issue: issue),
           const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonal(
-                  style: FilledButton.styleFrom(backgroundColor: Colors.red.shade50, foregroundColor: Colors.red, minimumSize: const Size.fromHeight(48)),
-                  onPressed: () => _confirmDelete(context),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.delete_outline, size: 20), SizedBox(width: 8), Text('Delete this issue', style: TextStyle(fontWeight: FontWeight.w600))]),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white, minimumSize: const Size.fromHeight(48)),
-                  onPressed: () => _showManageDialog(context),
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  label: const Text('Manage', style: TextStyle(fontWeight: FontWeight.w600)),
-                ),
-              ),
-            ],
+          FutureBuilder<String>(
+            future: _role(),
+            builder: (context, snapshot) {
+              final role = snapshot.data ?? '';
+              final isAdmin = role == 'admin';
+              final isOfficeAdmin = role == 'office_admin';
+              final myUid = Supabase.instance.client.auth.currentUser?.id;
+              final isReporter = myUid != null && myUid == issue.reportedBy;
+
+              // Mirror the permissions already enforced by _confirmDelete / _showManageDialog,
+              // so a user who cannot act on the issue never sees an action button for it.
+              final canDelete = isReporter || isAdmin;
+              final canManage = isAdmin;
+              final canRequestDeletion = isOfficeAdmin && !isReporter && !issue.isDeletionRequested;
+              final showManage = canManage || canRequestDeletion;
+
+              // A plain "simple user" (not the reporter, not admin/office admin) can neither
+              // delete nor manage this issue, so render no action row at all.
+              if (!canDelete && !showManage) {
+                return const SizedBox.shrink();
+              }
+
+              return Row(
+                children: [
+                  if (canDelete) ...[
+                    Expanded(
+                      child: FilledButton.tonal(
+                        style: FilledButton.styleFrom(backgroundColor: Colors.red.shade50, foregroundColor: Colors.red, minimumSize: const Size.fromHeight(48)),
+                        onPressed: () => _confirmDelete(context),
+                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.delete_outline, size: 20),
+                          SizedBox(width: 8),
+                          Flexible(child: Text('Delete this issue', overflow: TextOverflow.ellipsis, maxLines: 1, style: TextStyle(fontWeight: FontWeight.w600))),
+                        ]),
+                      ),
+                    ),
+                    if (showManage) const SizedBox(width: 12),
+                  ],
+                  if (showManage)
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white, minimumSize: const Size.fromHeight(48)),
+                        onPressed: () => _showManageDialog(context),
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        label: const Text('Manage', style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -264,7 +293,25 @@ class _IssueCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text('${issue.reportedBy}  ·  ${relativeTime(issue.createdAt)}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                // Resolve the reporter's display name (profiles.full_name) instead of
+                // showing the raw user id. Falls back to the id if the lookup fails or
+                // the name is empty, so the line is never blank.
+                Container(
+                  alignment: Alignment.centerLeft,
+                  child: FutureBuilder<String>(
+                    future: () async {
+                      final client = Supabase.instance.client;
+                      final rows = await client.from('profiles').select('full_name').eq('id', issue.reportedBy).limit(1);
+                      final row = rows.firstOrNull;
+                      final fullName = (row?['full_name'] as String?)?.trim() ?? '';
+                      return fullName.isNotEmpty ? fullName : issue.reportedBy;
+                    }(),
+                    builder: (context, snapshot) {
+                      final reporter = snapshot.data ?? issue.reportedBy;
+                      return Text('$reporter  ·  ${relativeTime(issue.createdAt)}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12));
+                    },
+                  ),
+                ),
                 const SizedBox(height: 14),
                 Text(issue.description, style: const TextStyle(fontSize: 15, height: 1.5, color: Colors.black87)),
                 if (issue.adminResponse != null && issue.adminResponse!.isNotEmpty) ...[
@@ -277,7 +324,7 @@ class _IssueCard extends StatelessWidget {
                       children: [
                         const Text('Admin Response', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF2563EB))),
                         const SizedBox(height: 6),
-                        Text(issue.adminResponse!, style: const TextStyle(fontSize: 14, color: Colors.black87)),
+                        Text(issue.adminResponse!, style: const TextStyle(fontSize: 14)),
                       ],
                     ),
                   ),
@@ -344,9 +391,9 @@ class _ManageIssueDialogState extends State<_ManageIssueDialog> {
               decoration: const InputDecoration(labelText: 'Admin Response', hintText: 'Add a note or response…', border: OutlineInputBorder()),
             ),
           ] else if (widget.canRequestDeletion) ...[
-            const Text('As an office admin you cannot delete issues directly. You can request the reporter to delete this issue.', style: TextStyle(fontSize: 13, color: Colors.black54)),
+            Text('As an office admin you cannot delete issues directly. You can request the reporter to delete this issue.', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ] else ...[
-            const Text('You do not have permission to manage this issue.', style: TextStyle(fontSize: 13, color: Colors.black54)),
+            Text('You do not have permission to manage this issue.', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ],
         ],
       ),

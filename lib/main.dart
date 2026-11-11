@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cbt_app/screens/login_screen.dart';
-import 'package:cbt_app/screens/home_screen.dart';
+import 'package:cbt_app/screens/main_shell.dart';
 import 'package:cbt_app/utils/env.dart';
 import 'package:cbt_app/utils/app_theme.dart';
 
@@ -46,7 +46,7 @@ class AuthWrapper extends StatelessWidget {
           
           // Check if user is authenticated
           if (session != null) {
-            return const HomeScreen();
+            return const MainShell();
           } else {
             return const LoginScreen();
           }
