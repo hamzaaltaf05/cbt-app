@@ -18,9 +18,9 @@ class ShopItem {
   factory ShopItem.fromMap(Map<String, dynamic> map) {
     return ShopItem(
       id: map['id'] as String,
-      name: map['name'] as String,
-      price: (map['price'] as num).toDouble(),
-      category: map['category'] as String,
+      name: (map['name'] as String?) ?? '',
+      price: (map['price'] as num?)?.toDouble() ?? 0.0,
+      category: (map['category'] as String?) ?? '',
       isAvailable: map['is_available'] as bool? ?? true,
       imageUrl: map['image_url'] as String?,
     );
