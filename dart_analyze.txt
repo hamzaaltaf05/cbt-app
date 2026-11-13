@@ -1,0 +1,12 @@
+Analyzing cbt_app...
+
+  error - lib\services\notification_service.dart:24:9 - The method '_refresh' isn't defined for the type 'NotificationService'. Try correcting the name to the name of an existing method, or defining a method named '_refresh'. - undefined_method
+  error - lib\services\notification_service.dart:36:3 - Undefined class 'Channel'. Try changing the name to the name of an existing class, or creating a class with the name 'Channel'. - undefined_class
+  error - lib\services\notification_service.dart:66:12 - The method 'execute' isn't defined for the type 'PostgrestTransformBuilder'. Try correcting the name to the name of an existing method, or defining a method named 'execute'. - undefined_method
+  error - lib\services\notification_service.dart:99:12 - The method 'execute' isn't defined for the type 'PostgrestFilterBuilder'. Try correcting the name to the name of an existing method, or defining a method named 'execute'. - undefined_method
+  error - lib\services\notification_service.dart:120:12 - The method 'execute' isn't defined for the type 'PostgrestFilterBuilder'. Try correcting the name to the name of an existing method, or defining a method named 'execute'. - undefined_method
+  error - lib\services\notification_service.dart:152:11 - The method 'on' isn't defined for the type 'RealtimeChannel'. Try correcting the name to the name of an existing method, or defining a method named 'on'. - undefined_method
+  error - lib\services\notification_service.dart:153:11 - Undefined name 'RealtimeListenTypes'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - lib\services\notification_service.dart:154:19 - The method 'RealtimeFilter' isn't defined for the type 'NotificationService'. Try correcting the name to the name of an existing method, or defining a method named 'RealtimeFilter'. - undefined_method
+
+8 issues found.

@@ -1,0 +1,25 @@
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:7:class Binding {
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:67:class ChannelFilter {
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:146:class ReplayOption {
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:167:class RealtimeChannelConfig {
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:238:class RealtimeSystemPayload {
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:273:/// Data class that contains the Postgres change event payload.
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:274:class PostgresChangePayload {
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:279:  final Map<String, dynamic> newRecord;
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:280:  final Map<String, dynamic> oldRecord;
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:287:    required this.newRecord,
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:288:    required this.oldRecord,
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:314:      newRecord: newData is Map ? Map.from(newData) : {},
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:315:      oldRecord: oldData is Map ? Map.from(oldData) : {},
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:322:    return 'PostgresChangePayload(schema: $schema, table: $table, commitTimestamp: $commitTimestamp, eventType: ${eventType.name}, newRow: $newRecord, oldRow: $oldRecord, errors: $errors)';
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:334:        mapEquals(other.newRecord, newRecord) &&
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:335:        mapEquals(other.oldRecord, oldRecord) &&
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:345:        newRecord.hashCode ^
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:346:        oldRecord.hashCode ^
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:424:class PostgresChangeFilter {
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:473:/// Base class for the payload in `.onPresence()` callback functions.
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:474:abstract class RealtimePresencePayload {
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:490:class RealtimePresenceSyncPayload extends RealtimePresencePayload {
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:506:class RealtimePresenceJoinPayload extends RealtimePresencePayload {
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:540:class RealtimePresenceLeavePayload extends RealtimePresencePayload {
+C:\Users\HamzaAltaf\AppData\Local\Pub\Cache\hosted\pub.dev\realtime_client-2.13.0\lib\src\types.dart:574:class SinglePresenceState {
