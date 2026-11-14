@@ -1,0 +1,33 @@
+-- Migration 12: add the missing `rejected` label to the `issue_status` enum.
+--
+-- ROOT CAUSE OF 22P02
+-- --------------------
+-- The app's IssueStatus enum (lib/models/facility_issue.dart) has FOUR values:
+--   pending, inProgress, resolved, rejected
+-- and BOTH "Manage" dialogs let an admin save any of them:
+--   * lib/screens/facility_issues_screen.dart   (list screen dialog)
+--   * lib/screens/facility_issue_detail_screen.dart  (detail screen dialog)
+-- Both send:
+--   updates['status'] = _selected.dbValue   -- e.g. 'rejected'
+--
+-- But the live `issue_status` enum only defines THREE labels:
+--   pending, in_progress, resolved
+-- (the facility_issues table + this enum were created in the original
+--  Supabase schema; this repo's migrations only patch it, so the enum
+--  definition is NOT present in the SQL files here).
+--
+-- So when an admin marks an issue as "Rejected", Postgres raises:
+--   22P02  invalid input value for enum issue_status: "rejected"
+--
+-- The app never sends any other status string:
+--   * create  -> 'pending'                          (always valid)
+--   * update  -> pending | in_progress | resolved | rejected
+-- so adding this one label makes EVERY value the app can send valid, and no
+-- write path can produce a 22P02 on this column anymore.
+--
+-- Idempotent (IF NOT EXISTS) and safe to re-run. On Supabase (Postgres 15)
+-- a newly added enum value is usable by subsequent client sessions immediately.
+-- Re-running the notifications triggers is unaffected (they only read
+-- new.status as text).
+
+alter type public.issue_status add value if not exists 'rejected';
