@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../services/notification_service.dart';
 import 'facility_issues_screen.dart';
 import 'home_screen.dart';
 import 'notification_screen.dart';
@@ -25,44 +27,38 @@ class _MainShellState extends State<MainShell> {
   // Home immediately after sign-in.
   int _currentIndex = 0;
 
-  static const List<Widget> _screens = [
-    HomeScreen(),
-    FacilityIssuesScreen(),
-    ShopItemsScreen(),
-    NotificationScreen(),
-    ProfileScreen(),
-  ];
+  late final NotificationService _notificationService;
+  late final List<Widget> _screens;
 
-  static const List<BottomNavigationBarItem> _items = [
-    BottomNavigationBarItem(
-      icon: Icon(Icons.home_outlined),
-      activeIcon: Icon(Icons.home),
-      label: 'Home',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.construction),
-      activeIcon: Icon(Icons.construction),
-      label: 'Facility',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.storefront_outlined),
-      activeIcon: Icon(Icons.storefront),
-      label: 'Honour Shop',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.notifications_none),
-      activeIcon: Icon(Icons.notifications),
-      label: 'Notifications',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.person_outline),
-      activeIcon: Icon(Icons.person),
-      label: 'Profile',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _notificationService = NotificationService(Supabase.instance.client);
+    _notificationService.addListener(_onNotificationsChanged);
+    _screens = [
+      const HomeScreen(),
+      const FacilityIssuesScreen(),
+      const ShopItemsScreen(),
+      NotificationScreen(service: _notificationService),
+      const ProfileScreen(),
+    ];
+  }
+
+  @override
+  void dispose() {
+    _notificationService.removeListener(_onNotificationsChanged);
+    _notificationService.dispose();
+    super.dispose();
+  }
+
+  void _onNotificationsChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
+    final unread = _notificationService.unreadCount;
+
     return Scaffold(
       // No Scaffold-level AppBar here: each tab manages its own AppBar or
       // custom header so we never render a double bar.
@@ -83,7 +79,41 @@ class _MainShellState extends State<MainShell> {
         unselectedLabelStyle: const TextStyle(fontSize: 10),
         showSelectedLabels: true,
         showUnselectedLabels: true,
-        items: _items,
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.construction),
+            activeIcon: Icon(Icons.construction),
+            label: 'Facility',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.storefront_outlined),
+            activeIcon: Icon(Icons.storefront),
+            label: 'Honour Shop',
+          ),
+          BottomNavigationBarItem(
+            icon: Badge.count(
+              count: unread,
+              isLabelVisible: unread > 0,
+              child: const Icon(Icons.notifications_none),
+            ),
+            activeIcon: Badge.count(
+              count: unread,
+              isLabelVisible: unread > 0,
+              child: const Icon(Icons.notifications),
+            ),
+            label: 'Notifications',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
       ),
     );
   }

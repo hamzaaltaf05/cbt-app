@@ -12,7 +12,8 @@ import '../services/notification_service.dart';
 /// items stream in over Supabase Realtime, keeping the list in sync without
 /// any manual refreshes.
 class NotificationScreen extends StatefulWidget {
-  const NotificationScreen({super.key});
+  final NotificationService? service;
+  const NotificationScreen({super.key, this.service});
 
   @override
   State<NotificationScreen> createState() => _NotificationScreenState();
@@ -20,6 +21,7 @@ class NotificationScreen extends StatefulWidget {
 
 class _NotificationScreenState extends State<NotificationScreen> {
   NotificationService? _service;
+  bool _ownsService = false;
   bool _loading = true;
   String? _error;
 
@@ -32,7 +34,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   void dispose() {
     _service?.removeListener(_onServiceChanged);
-    _service?.dispose();
+    if (_ownsService) {
+      _service?.dispose();
+    }
     super.dispose();
   }
 
@@ -46,11 +50,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   Future<void> _load() async {
-    final service = NotificationService(Supabase.instance.client);
-    _service = service;
-    service.addListener(_onServiceChanged);
+    if (widget.service != null) {
+      _service = widget.service;
+      _ownsService = false;
+    } else {
+      _service = NotificationService(Supabase.instance.client);
+      _ownsService = true;
+    }
+    _service!.addListener(_onServiceChanged);
     setState(() => _loading = true);
-    await service.refresh();
+    await _service!.refresh();
     if (mounted) setState(() => _loading = false);
   }
 
