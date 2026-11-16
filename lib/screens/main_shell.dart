@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../services/notification_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cbt_app/cubits/notifications/notifications_cubit.dart';
 import 'facility_issues_screen.dart';
 import 'home_screen.dart';
 import 'notification_screen.dart';
@@ -23,41 +22,19 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  // Default to the Home tab (first position in the bar) so users land on
-  // Home immediately after sign-in.
   int _currentIndex = 0;
 
-  late final NotificationService _notificationService;
-  late final List<Widget> _screens;
-
-  @override
-  void initState() {
-    super.initState();
-    _notificationService = NotificationService(Supabase.instance.client);
-    _notificationService.addListener(_onNotificationsChanged);
-    _screens = [
-      const HomeScreen(),
-      const FacilityIssuesScreen(),
-      const ShopItemsScreen(),
-      NotificationScreen(service: _notificationService),
-      const ProfileScreen(),
-    ];
-  }
-
-  @override
-  void dispose() {
-    _notificationService.removeListener(_onNotificationsChanged);
-    _notificationService.dispose();
-    super.dispose();
-  }
-
-  void _onNotificationsChanged() {
-    if (mounted) setState(() {});
-  }
+  static const List<Widget> _screens = [
+    HomeScreen(),
+    FacilityIssuesScreen(),
+    ShopItemsScreen(),
+    NotificationScreen(),
+    ProfileScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final unread = _notificationService.unreadCount;
+    final unread = context.watch<NotificationsCubit>().state.unreadCount;
 
     return Scaffold(
       // No Scaffold-level AppBar here: each tab manages its own AppBar or

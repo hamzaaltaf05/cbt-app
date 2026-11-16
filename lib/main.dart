@@ -1,7 +1,13 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cbt_app/cubits/auth/auth_cubit.dart';
+import 'package:cbt_app/cubits/auth/auth_state.dart';
+import 'package:cbt_app/cubits/facility_issues/facility_issues_cubit.dart';
+import 'package:cbt_app/cubits/honour_shop/honour_shop_cubit.dart';
+import 'package:cbt_app/cubits/notifications/notifications_cubit.dart';
 import 'package:cbt_app/screens/login_screen.dart';
 import 'package:cbt_app/screens/main_shell.dart';
 import 'package:cbt_app/services/fcm_service.dart';
@@ -40,13 +46,23 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Convergent',
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
-      home: const AuthWrapper(),
-      debugShowCheckedModeBanner: false,
+    final client = Supabase.instance.client;
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthCubit>(create: (_) => AuthCubit(client)),
+        BlocProvider<NotificationsCubit>(create: (_) => NotificationsCubit(client)),
+        BlocProvider<HonourShopCubit>(create: (_) => HonourShopCubit(client)),
+        BlocProvider<FacilityIssuesCubit>(create: (_) => FacilityIssuesCubit(client)),
+      ],
+      child: MaterialApp(
+        title: 'Convergent',
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.system,
+        home: const AuthWrapper(),
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }
@@ -56,21 +72,14 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.active) {
-          final session = snapshot.data?.session;
-          
-          // Check if user is authenticated
-          if (session != null) {
-            return const MainShell();
-          } else {
-            return const LoginScreen();
-          }
+    return BlocBuilder<AuthCubit, AppAuthState>(
+      builder: (context, state) {
+        if (state is AuthAuthenticated) {
+          return const MainShell();
+        } else if (state is AuthUnauthenticated) {
+          return const LoginScreen();
         }
-        
-        // While loading, show a loading indicator
+
         return const Scaffold(
           body: Center(
             child: CircularProgressIndicator(),

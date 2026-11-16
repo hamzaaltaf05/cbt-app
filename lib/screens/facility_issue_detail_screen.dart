@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../cubits/auth/auth_cubit.dart';
+import '../cubits/facility_issues/facility_issues_cubit.dart';
 import '../models/facility_issue.dart';
 import '../utils/relative_time.dart';
 
@@ -21,6 +24,23 @@ class FacilityIssueDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final issues = context.watch<FacilityIssuesCubit>().state.issues;
+    final currentIssue =
+        issues.firstWhere((i) => i.id == issue.id, orElse: () => issue);
+
+    final authCubit = context.watch<AuthCubit>();
+    final isAdmin = authCubit.isAdmin;
+    final isOfficeAdmin = authCubit.isOfficeAdmin;
+    final myUid = authCubit.profile?.id ??
+        Supabase.instance.client.auth.currentUser?.id;
+    final isReporter = myUid != null && myUid == currentIssue.reportedBy;
+
+    final canDelete = isReporter || isAdmin;
+    final canManage = isAdmin || isOfficeAdmin;
+    final canRequestDeletion =
+        isOfficeAdmin && !isReporter && !currentIssue.isDeletionRequested;
+    final showManage = canManage || canRequestDeletion;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -36,181 +56,154 @@ class FacilityIssueDetailScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (issue.isDeletionRequested) ...[
+          if (currentIssue.isDeletionRequested) ...[
             _DeletionRequestBanner(
-              when: issue.deletionRequestedAt,
-              onCancel: () => _cancelDeletionRequest(context),
+              when: currentIssue.deletionRequestedAt,
+              onCancel: () => _cancelDeletionRequest(context, currentIssue),
             ),
             const SizedBox(height: 12),
           ],
-          _IssueCard(issue: issue),
+          _IssueCard(issue: currentIssue),
           const SizedBox(height: 24),
-          FutureBuilder<String>(
-            future: _role(),
-            builder: (context, snapshot) {
-              final role = snapshot.data ?? '';
-              final isAdmin = role == 'admin';
-              final isOfficeAdmin = role == 'office_admin';
-              final myUid = Supabase.instance.client.auth.currentUser?.id;
-              final isReporter = myUid != null && myUid == issue.reportedBy;
-
-              // Mirror the permissions already enforced by _confirmDelete / _showManageDialog,
-              // so a user who cannot act on the issue never sees an action button for it.
-              final canDelete = isReporter || isAdmin;
-              final canManage = isAdmin || isOfficeAdmin;
-              final canRequestDeletion =
-                  isOfficeAdmin && !isReporter && !issue.isDeletionRequested;
-              final showManage = canManage || canRequestDeletion;
-
-              // A plain "simple user" (not the reporter, not admin/office admin) can neither
-              // delete nor manage this issue, so render no action row at all.
-              if (!canDelete && !showManage) {
-                return const SizedBox.shrink();
-              }
-
-              return Row(
-                children: [
-                  if (canDelete) ...[
-                    Expanded(
-                      child: FilledButton.tonal(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.red.shade50,
-                          foregroundColor: Colors.red,
-                          minimumSize: const Size.fromHeight(48),
-                        ),
-                        onPressed: () => _confirmDelete(context),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.delete_outline, size: 20),
-                            SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                'Delete this issue',
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
+          if (canDelete || showManage)
+            Row(
+              children: [
+                if (canDelete) ...[
+                  Expanded(
+                    child: FilledButton.tonal(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red.shade50,
+                        foregroundColor: Colors.red,
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      onPressed: () => _confirmDelete(context, currentIssue),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.delete_outline, size: 20),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Delete this issue',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: TextStyle(fontWeight: FontWeight.w600),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                    if (showManage) const SizedBox(width: 12),
-                  ],
-                  if (showManage)
-                    Expanded(
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(48),
-                        ),
-                        onPressed: () => _showManageDialog(context),
-                        icon: const Icon(Icons.edit_outlined, size: 20),
-                        label: const Text(
-                          'Manage',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
+                  ),
+                  if (showManage) const SizedBox(width: 12),
                 ],
-              );
-            },
-          ),
+                if (showManage)
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      onPressed: () => _showManageDialog(
+                        context,
+                        currentIssue,
+                        canManage: canManage,
+                        canRequestDeletion: canRequestDeletion,
+                      ),
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      label: const Text(
+                        'Manage',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
         ],
       ),
     );
   }
 
-  Future<void> _showManageDialog(BuildContext context) async {
-    final client = Supabase.instance.client;
-    final myUid = client.auth.currentUser?.id;
-    final isReporter = myUid == issue.reportedBy;
-    final role = await _role();
-    if (!context.mounted) return;
-    final isAdmin = role == 'admin';
-    final isOfficeAdmin = role == 'office_admin';
-
+  Future<void> _showManageDialog(
+    BuildContext context,
+    FacilityIssue targetIssue, {
+    required bool canManage,
+    required bool canRequestDeletion,
+  }) async {
     final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (ctx) => _ManageIssueDialog(
-        status: issue.status,
-        response: issue.adminResponse,
-        canManage: isAdmin || isOfficeAdmin,
-        canRequestDeletion:
-            isOfficeAdmin && !isReporter && !issue.isDeletionRequested,
+        status: targetIssue.status,
+        response: targetIssue.adminResponse,
+        canManage: canManage,
+        canRequestDeletion: canRequestDeletion,
       ),
     );
     if (result == null) return;
     if (!context.mounted) return;
 
     if (result.containsKey('delete_requested')) {
-      await _requestDeletion(context, client);
+      await _requestDeletion(context, targetIssue);
       return;
     }
-    final status = result['status'];
+    final statusStr = result['status'];
     final response = result['response'];
-    if (status == null && response == null) return;
+    if (statusStr == null && response == null) return;
 
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final updates = <String, String>{
-        'updated_at': DateTime.now().toIso8601String(),
-      };
-      if (status != null) updates['status'] = status;
-      if (response != null) updates['admin_response'] = response;
-      await client.from('facility_issues').update(updates).eq('id', issue.id);
-      messenger.showSnackBar(
-        SnackBar(
-          content: const Text('Issue updated'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $e')));
-    }
-  }
+    final newStatus =
+        statusStr != null ? IssueStatus.fromValue(statusStr) : targetIssue.status;
 
-  Future<String> _role() async {
-    final client = Supabase.instance.client;
-    final uid = client.auth.currentUser?.id;
-    if (uid == null) return '';
-    final rows = await client
-        .from('profiles')
-        .select('role')
-        .eq('id', uid)
-        .limit(1);
-    return (rows.firstOrNull?['role'] as String?) ?? '';
+    // 1. Immediately trigger optimistic update in Cubit (0ms delay)
+    context.read<FacilityIssuesCubit>().updateIssue(
+          id: targetIssue.id,
+          status: newStatus,
+          adminResponse: response,
+        );
+
+    // 2. Take the user outside the issue details back to the list
+    Navigator.of(context).pop();
+
+    // 3. Show confirmation feedback on the issues screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Issue updated successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   Future<void> _requestDeletion(
     BuildContext context,
-    SupabaseClient client,
+    FacilityIssue targetIssue,
   ) async {
-    try {
-      await client.rpc(
-        'request_issue_deletion',
-        params: {'issue_id': issue.id},
-      );
-      if (context.mounted) {
+    final success = await context
+        .read<FacilityIssuesCubit>()
+        .requestDeletion(targetIssue.id);
+
+    if (context.mounted) {
+      if (success) {
+        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Deletion request sent to the reporter'),
             backgroundColor: Colors.green,
           ),
         );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not send request: $e')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not send deletion request'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
 
-  Future<void> _cancelDeletionRequest(BuildContext context) async {
+  Future<void> _cancelDeletionRequest(
+    BuildContext context,
+    FacilityIssue targetIssue,
+  ) async {
     final client = Supabase.instance.client;
     final uid = client.auth.currentUser?.id;
     if (uid == null) return;
@@ -238,9 +231,10 @@ class FacilityIssueDetailScreen extends StatelessWidget {
     try {
       await client.rpc(
         'cancel_issue_deletion_request',
-        params: {'issue_id': issue.id, 'requester_id': uid},
+        params: {'issue_id': targetIssue.id, 'requester_id': uid},
       );
       if (context.mounted) {
+        context.read<FacilityIssuesCubit>().loadIssues();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Deletion request cancelled'),
@@ -256,29 +250,16 @@ class FacilityIssueDetailScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
-    final client = Supabase.instance.client;
-    final myUid = client.auth.currentUser?.id;
-    if (myUid == null) return;
-
-    final isReporter = myUid == issue.reportedBy;
-    final role = await _role();
-    if (!context.mounted) return;
-    if (!isReporter && role != 'admin') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Only the reporter or an admin can delete this issue.'),
-        ),
-      );
-      return;
-    }
-
+  Future<void> _confirmDelete(
+    BuildContext context,
+    FacilityIssue targetIssue,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete this issue?'),
         content: Text(
-          '"${issue.title}" will be permanently removed. This cannot be undone.',
+          '"${targetIssue.title}" will be permanently removed. This cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -294,24 +275,27 @@ class FacilityIssueDetailScreen extends StatelessWidget {
       ),
     );
     if (confirmed != true) return;
+    if (!context.mounted) return;
 
-    try {
-      await client.from('facility_issues').delete().eq('id', issue.id);
-      // The row (and its pending deletion request, if any) is removed above;
-      // no separate cleanup RPC is needed — calling one here would 404.
-      if (context.mounted) {
+    final success =
+        await context.read<FacilityIssuesCubit>().deleteIssue(targetIssue.id);
+
+    if (context.mounted) {
+      if (success) {
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Issue deleted'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to delete issue'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -440,13 +424,16 @@ class _IssueCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
-                // Resolve the reporter's display name (profiles.full_name) instead of
-                // showing the raw user id. Falls back to the id if the lookup fails or
-                // the name is empty, so the line is never blank.
                 Container(
                   alignment: Alignment.centerLeft,
                   child: FutureBuilder<String>(
                     future: () async {
+                      final cached = context
+                          .read<FacilityIssuesCubit>()
+                          .state
+                          .reporterNames[issue.reportedBy];
+                      if (cached != null && cached.isNotEmpty) return cached;
+
                       final client = Supabase.instance.client;
                       final rows = await client
                           .from('profiles')
@@ -480,7 +467,7 @@ class _IssueCard extends StatelessWidget {
                   ),
                 ),
                 if (issue.adminResponse != null &&
-                    issue.adminResponse!.isNotEmpty) ...[
+                  issue.adminResponse!.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -618,13 +605,6 @@ class _ManageIssueDialogState extends State<_ManageIssueDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        // if (widget.canRequestDeletion)
-        //   FilledButton.icon(
-        //     style: FilledButton.styleFrom(backgroundColor: Colors.orange),
-        //     onPressed: () => Navigator.pop(context, {'delete_requested': 'true'}),
-        //     icon: const Icon(Icons.gavel_outlined),
-        //     label: const Text('Request Deletion'),
-        //   ),
         if (widget.canManage)
           FilledButton(
             onPressed: () => Navigator.pop(context, {

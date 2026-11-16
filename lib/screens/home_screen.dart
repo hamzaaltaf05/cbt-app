@@ -1,73 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cbt_app/cubits/auth/auth_cubit.dart';
+import 'package:cbt_app/cubits/auth/auth_state.dart';
 
-import '../models/user_profile.dart';
 import '../utils/responsive.dart';
 import 'shop_items_screen.dart';
 import 'facility_issues_screen.dart';
 import 'user_management_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  bool _isLoading = true;
-  bool _isAdmin = false;
-  String _displayName = 'there';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadProfile();
-  }
-
-  /// Loads the signed-in user's name and role from the `profiles` table,
-  /// falling back to the email local-part until that resolves.
-  Future<void> _loadProfile() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    var name = user?.email != null ? user!.email!.split('@').first : 'there';
-    var role = UserRole.simpleUser;
-
-    try {
-      if (user != null) {
-        final rows = await Supabase.instance.client
-            .from('profiles')
-            .select()
-            .eq('id', user.id)
-            .limit(1)
-            .maybeSingle();
-        if (rows != null) {
-          final profile = UserProfile.fromMap(rows);
-          if (profile.fullName.isNotEmpty) name = profile.fullName;
-          role = profile.role;
-        }
-      }
-    } catch (_) {
-      // Keep fallback name/role on failure.
-    }
-
-    if (mounted) {
-      setState(() {
-        _displayName = name;
-        _isAdmin = role == UserRole.admin;
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final first = _displayName.split(' ').first;
+    final authState = context.watch<AuthCubit>().state;
+    final profile = authState is AuthAuthenticated ? authState.profile : null;
+
+    final displayName = profile?.fullName.isNotEmpty == true
+        ? profile!.fullName
+        : (profile?.email.split('@').first ?? 'there');
+    final isAdmin = profile?.isAdmin ?? false;
+    final first = displayName.split(' ').first;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Welcome back, $_displayName'),
+        title: Text('Welcome back, $displayName'),
       ),
       body: SafeArea(
         child: Center(
@@ -98,10 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  if (_isLoading)
-                    const Center(child: CircularProgressIndicator())
-                  else
-                    _buildTilesGrid(context, _isAdmin),
+                  _buildTilesGrid(context, isAdmin, scheme),
                 ],
               ),
             ),
@@ -111,9 +67,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Responsive dashboard grid: a single row of wide tiles in landscape /
-  /// wide screens, and a 2-column grid in narrow (portrait) screens.
-  Widget _buildTilesGrid(BuildContext context, bool isAdmin) {
+  /// Responsive dashboard grid.
+  Widget _buildTilesGrid(BuildContext context, bool isAdmin, ColorScheme scheme) {
     final columns = Responsive.isLandscape(context) ? 4 : 2;
     return GridView.count(
       shrinkWrap: true,
@@ -124,6 +79,8 @@ class _HomeScreenState extends State<HomeScreen> {
       childAspectRatio: 1.4,
       children: [
         _buildTile(
+          context,
+          scheme,
           Icons.storefront_outlined,
           'Honour Shop',
           () => Navigator.push(
@@ -132,6 +89,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         _buildTile(
+          context,
+          scheme,
           Icons.report_problem_outlined,
           'Facility Issues',
           () => Navigator.push(
@@ -141,6 +100,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         if (isAdmin)
           _buildTile(
+            context,
+            scheme,
             Icons.manage_accounts,
             'User Management',
             () => Navigator.push(
@@ -152,10 +113,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTile(IconData icon, String label, VoidCallback onTap) {
+  Widget _buildTile(
+    BuildContext context,
+    ColorScheme scheme,
+    IconData icon,
+    String label,
+    VoidCallback onTap,
+  ) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
     return Card(
       margin: EdgeInsets.zero,
       child: InkWell(

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cbt_app/cubits/auth/auth_cubit.dart';
+import 'package:cbt_app/cubits/honour_shop/honour_shop_cubit.dart';
 import 'package:cbt_app/models/shop_item.dart';
 import 'package:cbt_app/models/user_profile.dart';
 
@@ -22,13 +24,7 @@ class ShopItemsScreen extends StatefulWidget {
 }
 
 class _ShopItemsScreenState extends State<ShopItemsScreen> {
-  List<ShopItem> _items = [];
-  bool _isLoading = true;
-  String? _error;
-  UserRole? _userRole;
-
   final TextEditingController _searchController = TextEditingController();
-  String _selectedCategory = 'All';
 
   @override
   void dispose() {
@@ -36,92 +32,22 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadProfileAndItems();
+  bool get _canManageItems {
+    final role = context.watch<AuthCubit>().role;
+    return role == UserRole.admin || role == UserRole.shopManager;
   }
 
-  Future<void> _loadProfileAndItems() async {
-    try {
-      final uid = Supabase.instance.client.auth.currentUser!.id;
-      final profileRows = await Supabase.instance.client
-          .from('profiles')
-          .select()
-          .eq('id', uid)
-          .limit(1)
-          .maybeSingle();
-
-      if (profileRows != null) {
-        final profile = UserProfile.fromMap(profileRows);
-        _userRole = profile.role;
-      } else {
-        _userRole = UserRole.simpleUser;
-      }
-
-      await _loadItems();
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = 'Failed to load data: $e';
-          _isLoading = false;
-        });
-      }
-    }
+  bool get _isFiltering {
+    final state = context.watch<HonourShopCubit>().state;
+    return state.searchQuery.isNotEmpty || state.selectedCategory != 'All';
   }
 
-  Future<void> _loadItems() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  List<ShopItem> get _filteredItems =>
+      context.watch<HonourShopCubit>().state.filteredItems;
 
-    try {
-      final rows = await Supabase.instance.client
-          .from('shop_items')
-          .select()
-          .order('created_at', ascending: false);
+  bool get _isLoading => context.watch<HonourShopCubit>().state.isLoading;
 
-      if (mounted) {
-        setState(() {
-          _items = rows.map((row) => ShopItem.fromMap(row)).toList();
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = 'Failed to load items: $e';
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  bool get _canManageItems =>
-      _userRole == UserRole.admin || _userRole == UserRole.shopManager;
-
-  /// True when the search field or category filter is narrowing the list.
-  bool get _isFiltering =>
-      _searchController.text.trim().isNotEmpty || _selectedCategory != 'All';
-
-  /// Items after applying the category filter and the text search.
-  /// Both are case-insensitive and the text search matches either the
-  /// item name or its category.
-  List<ShopItem> get _filteredItems {
-    final text = _searchController.text.trim().toLowerCase();
-    final category = _selectedCategory;
-    return _items.where((item) {
-      final matchesCategory =
-          category == 'All' ||
-          item.category.toLowerCase() == category.toLowerCase();
-      final matchesText =
-          text.isEmpty ||
-          item.name.toLowerCase().contains(text) ||
-          item.category.toLowerCase().contains(text);
-      return matchesCategory && matchesText;
-    }).toList();
-  }
+  String? get _error => context.watch<HonourShopCubit>().state.errorMessage;
 
   Future<void> _showAddItemDialog() async {
     final nameController = TextEditingController();
@@ -191,28 +117,19 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
                   );
                   return;
                 }
-                try {
-                  await Supabase.instance.client.from('shop_items').insert({
-                    'name': name,
-                    'price': price,
-                    'category': selectedCategory,
-                    'is_available': true,
-                  });
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Item added!'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                  _loadItems();
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text('Error: $e')));
-                  }
+                final success = await context.read<HonourShopCubit>().addItem(
+                  name: name,
+                  price: price,
+                  category: selectedCategory,
+                );
+                if (success && context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Item added!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
                 }
               },
               child: const Text('Add'),
@@ -295,30 +212,24 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
                   );
                   return;
                 }
-                try {
-                  await Supabase.instance.client
-                      .from('shop_items')
-                      .update({
-                        'name': name,
-                        'price': price,
-                        'category': selectedCategory,
-                      })
-                      .eq('id', item.id);
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Item updated!'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                  _loadItems();
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text('Error: $e')));
-                  }
+                final success = await context.read<HonourShopCubit>().editItem(
+                  id: item.id,
+                  name: name,
+                  price: price,
+                  category: selectedCategory,
+                );
+                if (success && context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Item updated!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else if (!success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to update item')),
+                  );
                 }
               },
               child: const Text('Save'),
@@ -349,17 +260,10 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
       ),
     );
     if (confirmed == true) {
-      try {
-        await Supabase.instance.client
-            .from('shop_items')
-            .delete()
-            .eq('id', item.id);
-        _loadItems();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Failed: $e')));
-        }
+      final success = await context.read<HonourShopCubit>().deleteItem(item.id);
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Failed to delete item')));
       }
     }
   }
@@ -478,33 +382,30 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
     );
     if (confirmed != true) return;
 
-    try {
-      await Supabase.instance.client.rpc(
-        'set_shop_item_availability',
-        params: {'p_id': item.id, 'p_is_available': makeAvailable},
-      );
-      await _loadItems();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              makeAvailable
-                  ? 'Item marked as available'
-                  : 'Item marked as unavailable',
-            ),
-            backgroundColor: Colors.green,
+    final success = await context.read<HonourShopCubit>().toggleAvailability(
+      item,
+      makeAvailable,
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? (makeAvailable
+                    ? 'Item marked as available'
+                    : 'Item marked as unavailable')
+                : 'Failed to update availability',
           ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed: $e')));
-      }
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
+      );
     }
   }
 
   Widget _buildSearchBar() {
+    final shopCubit = context.read<HonourShopCubit>();
+    final selectedCategory = context.watch<HonourShopCubit>().state.selectedCategory;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
@@ -512,7 +413,7 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
           Expanded(
             child: TextField(
               controller: _searchController,
-              onChanged: (_) => setState(() {}),
+              onChanged: (text) => shopCubit.setSearchQuery(text),
               style: const TextStyle(fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Search by name',
@@ -524,7 +425,7 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
                         tooltip: 'Clear search',
                         onPressed: () {
                           _searchController.clear();
-                          setState(() {});
+                          shopCubit.setSearchQuery('');
                         },
                       )
                     : null,
@@ -538,7 +439,7 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
           const SizedBox(width: 12),
           Flexible(
             child: DropdownButtonFormField<String>(
-              initialValue: _selectedCategory,
+              value: selectedCategory,
               borderRadius: BorderRadius.circular(12),
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
@@ -552,7 +453,7 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
                 ...kShopCategories,
               ].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
               onChanged: (value) =>
-                  setState(() => _selectedCategory = value ?? 'All'),
+                  shopCubit.setCategory(value ?? 'All'),
             ),
           ),
         ],
@@ -701,7 +602,7 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton(
-                            onPressed: _loadProfileAndItems,
+                            onPressed: () => context.read<HonourShopCubit>().loadItems(),
                             child: const Text('Retry'),
                           ),
                         ],
@@ -744,7 +645,7 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
                     ),
                   )
                 : RefreshIndicator(
-                    onRefresh: _loadItems,
+                    onRefresh: () => context.read<HonourShopCubit>().loadItems(),
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.symmetric(vertical: 8),
