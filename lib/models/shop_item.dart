@@ -35,4 +35,22 @@ class ShopItem {
       'image_url': imageUrl,
     };
   }
+
+  ShopItem copyWith({
+    String? id,
+    String? name,
+    double? price,
+    String? category,
+    bool? isAvailable,
+    String? imageUrl,
+  }) {
+    return ShopItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      price: price ?? this.price,
+      category: category ?? this.category,
+      isAvailable: isAvailable ?? this.isAvailable,
+      imageUrl: imageUrl ?? this.imageUrl,
+    );
+  }
 }

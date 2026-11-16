@@ -71,6 +71,38 @@ class FacilityIssue {
   String get statusLabel => status.label;
   Color get statusColor => status.color;
 
+  FacilityIssue copyWith({
+    String? id,
+    String? title,
+    String? description,
+    IssueStatus? status,
+    String? photoPath,
+    String? imageUrl,
+    String? adminResponse,
+    String? reportedBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    List<String>? photos,
+    String? deletionRequestedBy,
+    DateTime? deletionRequestedAt,
+  }) {
+    return FacilityIssue(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      status: status ?? this.status,
+      photoPath: photoPath ?? this.photoPath,
+      imageUrl: imageUrl ?? this.imageUrl,
+      adminResponse: adminResponse ?? this.adminResponse,
+      reportedBy: reportedBy ?? this.reportedBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      photos: photos ?? this.photos,
+      deletionRequestedBy: deletionRequestedBy ?? this.deletionRequestedBy,
+      deletionRequestedAt: deletionRequestedAt ?? this.deletionRequestedAt,
+    );
+  }
+
   factory FacilityIssue.fromMap(Map<String, dynamic> map) {
     var raw = map['photos'];
     final photos = <String>[];

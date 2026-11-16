@@ -1,85 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cbt_app/cubits/notifications/notifications_cubit.dart';
 
 import '../models/app_notification.dart';
 import '../models/facility_issue.dart';
 import '../screens/facility_issue_detail_screen.dart';
-import '../services/notification_service.dart';
 
 /// The "Notifications" tab.
 ///
 /// A live feed of every notification addressed to the signed-in user. New
 /// items stream in over Supabase Realtime, keeping the list in sync without
 /// any manual refreshes.
-class NotificationScreen extends StatefulWidget {
-  final NotificationService? service;
-  const NotificationScreen({super.key, this.service});
-
-  @override
-  State<NotificationScreen> createState() => _NotificationScreenState();
-}
-
-class _NotificationScreenState extends State<NotificationScreen> {
-  NotificationService? _service;
-  bool _ownsService = false;
-  bool _loading = true;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void dispose() {
-    _service?.removeListener(_onServiceChanged);
-    if (_ownsService) {
-      _service?.dispose();
-    }
-    super.dispose();
-  }
-
-  void _onServiceChanged() {
-    if (!mounted) return;
-    setState(() {
-      _error = _service?.hasError == true
-          ? 'Failed to load notifications.'
-          : null;
-    });
-  }
-
-  Future<void> _load() async {
-    if (widget.service != null) {
-      _service = widget.service;
-      _ownsService = false;
-    } else {
-      _service = NotificationService(Supabase.instance.client);
-      _ownsService = true;
-    }
-    _service!.addListener(_onServiceChanged);
-    setState(() => _loading = true);
-    await _service!.refresh();
-    if (mounted) setState(() => _loading = false);
-  }
-
-  Future<void> _markRead(AppNotification n) async {
-    await _service?.markRead(n);
-  }
-
-  Future<void> _markAllRead() async {
-    if (_service?.unreadCount != 0) return;
-    await _service?.markAllRead();
-  }
-
-  Future<void> _refreshList() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    await _service?.refresh();
-    if (mounted) setState(() => _loading = false);
-  }
+class NotificationScreen extends StatelessWidget {
+  const NotificationScreen({super.key});
 
   /// Tapping a facility-issue notification opens the existing, full-featured
   /// [FacilityIssueDetailScreen] for that issue (which supports managing,
@@ -111,7 +45,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return;
       }
       final issue = FacilityIssue.fromMap(row);
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       if (!context.mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -130,37 +64,44 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final service = _service;
-    final items = service?.notifications ?? const <AppNotification>[];
+    final notifCubit = context.watch<NotificationsCubit>();
+    final state = notifCubit.state;
+    final items = state.notifications;
+    final unread = state.unreadCount;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
         actions: [
-          if (service != null && service.unreadCount > 0)
+          if (unread > 0)
             IconButton(
               icon: const Icon(Icons.mark_chat_read),
               tooltip: 'Mark all as read',
-              onPressed: _markAllRead,
+              onPressed: () => context.read<NotificationsCubit>().markAllRead(),
             ),
         ],
       ),
-      floatingActionButton: _loading
+      floatingActionButton: state.isLoading
           ? null
           : FloatingActionButton.extended(
               icon: const Icon(Icons.refresh),
               label: const Text('Refresh'),
-              onPressed: _refreshList,
+              onPressed: () => context.read<NotificationsCubit>().refresh(),
             ),
-      body: _buildBody(context, items),
+      body: _buildBody(context, state.isLoading, state.errorMessage, items),
     );
   }
 
-  Widget _buildBody(BuildContext context, List<AppNotification> items) {
-    if (_loading) {
+  Widget _buildBody(
+    BuildContext context,
+    bool isLoading,
+    String? errorMessage,
+    List<AppNotification> items,
+  ) {
+    if (isLoading && items.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_error != null) {
+    if (errorMessage != null && items.isEmpty) {
       return ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -171,12 +112,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 const Icon(Icons.error_outline, size: 48),
                 const SizedBox(height: 12),
                 Text(
-                  _error!,
+                  errorMessage,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
-                  onPressed: _refreshList,
+                  onPressed: () => context.read<NotificationsCubit>().refresh(),
                   icon: const Icon(Icons.refresh),
                   label: const Text('Retry'),
                 ),
@@ -190,7 +131,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       return _buildEmpty(context);
     }
     return RefreshIndicator(
-      onRefresh: _refreshList,
+      onRefresh: () => context.read<NotificationsCubit>().refresh(),
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
         itemCount: items.length,
@@ -249,7 +190,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          _markRead(n);
+          context.read<NotificationsCubit>().markRead(n);
           if (n.isFacility) {
             _openFacilityDetail(context, n);
           }
