@@ -5,6 +5,8 @@ import '../utils/responsive.dart';
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
+  static const String allowedDomain = '@convergentbt.com';
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -61,18 +63,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Email field
                     TextFormField(
                       controller: _emailController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Email',
-                        prefixIcon: Icon(Icons.email),
-                        border: OutlineInputBorder(),
+                        hintText: 'Enter your email',
+                        prefixIcon: const Icon(Icons.email),
+                        border: const OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
+                        if (value == null || value.trim().isEmpty) {
                           return 'Please enter your email';
                         }
-                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                        final email = value.trim().toLowerCase();
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
                           return 'Please enter a valid email';
+                        }
+                        if (!email.endsWith(LoginScreen.allowedDomain)) {
+                          return 'Please use your official email';
                         }
                         return null;
                       },
@@ -82,18 +89,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Password field
                     TextFormField(
                       controller: _passwordController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: Icon(Icons.lock),
-                        border: OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
+                        border: const OutlineInputBorder(),
+                        helperText: _isSignUp ? 'Minimum 8 characters' : null,
                       ),
                       obscureText: true,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your password';
                         }
-                        if (value.length < 6) {
-                          return 'Password must be at least 6 characters';
+                        if (_isSignUp && value.length < 8) {
+                          return 'Password must be at least 8 characters';
+                        } else if (!_isSignUp && value.length < 8) {
+                          return 'Password must be at least 8 characters';
                         }
                         return null;
                       },
@@ -112,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               border: OutlineInputBorder(),
                             ),
                             validator: (value) {
-                              if (value == null || value.isEmpty) {
+                              if (value == null || value.trim().isEmpty) {
                                 return 'Please enter your full name';
                               }
                               return null;
@@ -174,6 +184,21 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    final normalizedEmail = _emailController.text.trim().toLowerCase();
+
+    // Redundant safety check before network dispatch
+    if (!normalizedEmail.endsWith(LoginScreen.allowedDomain)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please use your official email to sign in.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -182,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_isSignUp) {
         // Sign up — Supabase may require email confirmation before a session exists
         final authResponse = await Supabase.instance.client.auth.signUp(
-          email: _emailController.text.trim(),
+          email: normalizedEmail,
           password: _passwordController.text,
           data: {
             'full_name': _fullNameController.text.trim(),
@@ -202,20 +227,20 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           }
         }
-        // If a session WAS created, the AuthWrapper stream will
-        // automatically navigate to HomeScreen — no manual navigation needed.
       } else {
         // Sign in — establishes a session immediately.
-        // The AuthWrapper stream detects the change and shows HomeScreen.
         await Supabase.instance.client.auth.signInWithPassword(
-          email: _emailController.text.trim(),
+          email: normalizedEmail,
           password: _passwordController.text,
         );
       }
     } on AuthException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Authentication error: ${e.message}')),
+          SnackBar(
+            content: Text('Authentication error: ${e.message}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } on Exception catch (e) {
@@ -225,9 +250,11 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

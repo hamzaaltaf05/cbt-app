@@ -144,6 +144,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildProfileCard(profile),
           const SizedBox(height: 16),
           _buildActionsCard(profile),
+          const SizedBox(height: 32),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.verified_rounded,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Convergent  v1.0',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );

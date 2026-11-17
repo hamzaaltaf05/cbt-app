@@ -69,14 +69,15 @@ class HomeScreen extends StatelessWidget {
 
   /// Responsive dashboard grid.
   Widget _buildTilesGrid(BuildContext context, bool isAdmin, ColorScheme scheme) {
-    final columns = Responsive.isLandscape(context) ? 4 : 2;
+    final isLandscape = Responsive.isLandscape(context);
+    final columns = isLandscape ? 4 : 2;
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: columns,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.4,
+      childAspectRatio: isLandscape ? 1.4 : 1.18,
       children: [
         _buildTile(
           context,

@@ -70,38 +70,47 @@ class FacilityIssueDetailScreen extends StatelessWidget {
               children: [
                 if (canDelete) ...[
                   Expanded(
+                    flex: showManage ? 3 : 1,
                     child: FilledButton.tonal(
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.red.shade50,
                         foregroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         minimumSize: const Size.fromHeight(48),
                       ),
                       onPressed: () => _confirmDelete(context, currentIssue),
                       child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.delete_outline, size: 20),
-                          SizedBox(width: 8),
+                          Icon(Icons.delete_outline, size: 19),
+                          SizedBox(width: 6),
                           Flexible(
-                            child: Text(
-                              'Delete this issue',
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                              style: TextStyle(fontWeight: FontWeight.w600),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Delete Issue',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  if (showManage) const SizedBox(width: 12),
+                  if (showManage) const SizedBox(width: 10),
                 ],
                 if (showManage)
                   Expanded(
+                    flex: canDelete ? 2 : 1,
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         minimumSize: const Size.fromHeight(48),
                       ),
                       onPressed: () => _showManageDialog(
@@ -110,10 +119,16 @@ class FacilityIssueDetailScreen extends StatelessWidget {
                         canManage: canManage,
                         canRequestDeletion: canRequestDeletion,
                       ),
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      label: const Text(
-                        'Manage',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                      icon: const Icon(Icons.edit_outlined, size: 19),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Manage',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -341,7 +356,18 @@ class _DeletionRequestBanner extends StatelessWidget {
               ],
             ),
           ),
-          TextButton(onPressed: onCancel, child: const Text('Dismiss request')),
+          const SizedBox(width: 8),
+          TextButton(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              visualDensity: VisualDensity.compact,
+            ),
+            onPressed: onCancel,
+            child: const FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('Dismiss'),
+            ),
+          ),
         ],
       ),
     );
@@ -355,6 +381,9 @@ class _IssueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasImage = issue.imageUrl != null && issue.imageUrl!.isNotEmpty;
+    final heroTag = 'issue_image_${issue.id}';
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLow,
@@ -370,21 +399,76 @@ class _IssueCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (issue.imageUrl != null && issue.imageUrl!.isNotEmpty)
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-              child: Image.network(
-                issue.imageUrl!,
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  height: 120,
-                  color: Colors.grey.shade100,
-                  child: const Icon(Icons.broken_image, color: Colors.grey),
-                ),
+          if (hasImage)
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FullScreenImageViewer(
+                      imageUrl: issue.imageUrl!,
+                      title: issue.title,
+                      heroTag: heroTag,
+                    ),
+                  ),
+                );
+              },
+              child: Stack(
+                children: [
+                  Hero(
+                    tag: heroTag,
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                      child: Image.network(
+                        issue.imageUrl!,
+                        height: 220,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          height: 120,
+                          color: Colors.grey.shade100,
+                          child:
+                              const Icon(Icons.broken_image, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 12,
+                    bottom: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.zoom_in, color: Colors.white, size: 16),
+                          SizedBox(width: 4),
+                          Text(
+                            'Tap to zoom',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           Padding(
@@ -403,6 +487,7 @@ class _IssueCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -467,7 +552,7 @@ class _IssueCard extends StatelessWidget {
                   ),
                 ),
                 if (issue.adminResponse != null &&
-                  issue.adminResponse!.isNotEmpty) ...[
+                    issue.adminResponse!.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -512,6 +597,95 @@ class _IssueCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A full-screen interactive image viewer supporting pinch-to-zoom,
+/// double-tap zoom, and panning.
+class FullScreenImageViewer extends StatelessWidget {
+  const FullScreenImageViewer({
+    super.key,
+    required this.imageUrl,
+    required this.heroTag,
+    this.title,
+  });
+
+  final String imageUrl;
+  final String heroTag;
+  final String? title;
+
+  @override
+  Widget build(BuildContext context) {
+    final TransformationController transformationController =
+        TransformationController();
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        foregroundColor: Colors.white,
+        title: title != null
+            ? Text(
+                title!,
+                style: const TextStyle(fontSize: 16, color: Colors.white),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )
+            : null,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.restart_alt, color: Colors.white),
+            tooltip: 'Reset zoom',
+            onPressed: () {
+              transformationController.value = Matrix4.identity();
+            },
+          ),
+        ],
+      ),
+      body: Center(
+        child: Hero(
+          tag: heroTag,
+          child: InteractiveViewer(
+            transformationController: transformationController,
+            minScale: 0.5,
+            maxScale: 5.0,
+            clipBehavior: Clip.none,
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              width: double.infinity,
+              height: double.infinity,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return Center(
+                  child: CircularProgressIndicator(
+                    value: progress.expectedTotalBytes != null
+                        ? progress.cumulativeBytesLoaded /
+                            progress.expectedTotalBytes!
+                        : null,
+                    color: Colors.white,
+                  ),
+                );
+              },
+              errorBuilder: (_, __, ___) => const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.broken_image, size: 56, color: Colors.white54),
+                    SizedBox(height: 12),
+                    Text(
+                      'Failed to load image',
+                      style: TextStyle(color: Colors.white54, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

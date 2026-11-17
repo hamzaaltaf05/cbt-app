@@ -411,6 +411,7 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
       child: Row(
         children: [
           Expanded(
+            flex: 3,
             child: TextField(
               controller: _searchController,
               onChanged: (text) => shopCubit.setSearchQuery(text),
@@ -436,22 +437,24 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          Flexible(
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 2,
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               value: selectedCategory,
               borderRadius: BorderRadius.circular(12),
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding: EdgeInsets.symmetric(
                   vertical: 10,
-                  horizontal: 10,
+                  horizontal: 8,
                 ),
               ),
               items: [
                 'All',
                 ...kShopCategories,
-              ].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+              ].map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
               onChanged: (value) =>
                   shopCubit.setCategory(value ?? 'All'),
             ),
