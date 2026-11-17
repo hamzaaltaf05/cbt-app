@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cbt_app/cubits/auth/auth_cubit.dart';
 import 'package:cbt_app/cubits/facility_issues/facility_issues_cubit.dart';
-import 'package:cbt_app/cubits/facility_issues/facility_issues_state.dart';
 import 'package:cbt_app/models/facility_issue.dart';
 import 'package:cbt_app/utils/relative_time.dart';
 import 'package:cbt_app/screens/facility_issue_detail_screen.dart';
@@ -39,8 +38,10 @@ class FacilityIssuesScreen extends StatelessWidget {
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.only(top: 8, bottom: 80),
                       children: issues
-                          .map((issue) =>
-                              _buildIssueTile(context, issue, reporterNames))
+                          .map(
+                            (issue) =>
+                                _buildIssueTile(context, issue, reporterNames),
+                          )
                           .toList(),
                     ),
                   ),
@@ -56,12 +57,10 @@ class FacilityIssuesScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 60, 20, 16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primary,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(24),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(15),
+            color: Colors.black.withValues(alpha: 15 / 255),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -122,7 +121,9 @@ class FacilityIssuesScreen extends StatelessWidget {
                     Text(
                       'Report',
                       style: TextStyle(
-                          fontWeight: FontWeight.w600, color: Colors.black87),
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
                     ),
                   ],
                 ),
@@ -140,24 +141,16 @@ class FacilityIssuesScreen extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 48,
-            color: Colors.red.shade300,
-          ),
+          Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
           const SizedBox(height: 12),
           Text(
             error,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            onPressed: () =>
-                context.read<FacilityIssuesCubit>().loadIssues(),
+            onPressed: () => context.read<FacilityIssuesCubit>().loadIssues(),
             icon: const Icon(Icons.refresh),
             label: const Text('Try Again'),
           ),
@@ -191,10 +184,7 @@ class FacilityIssuesScreen extends StatelessWidget {
           Text(
             'Tap "Report" to be the first!',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade400,
-            ),
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
           ),
         ],
       ),
@@ -221,16 +211,18 @@ class FacilityIssuesScreen extends StatelessWidget {
     if (result == null || !context.mounted) return;
 
     final success = await context.read<FacilityIssuesCubit>().createIssue(
-          title: result.title,
-          description: result.description,
-          image: result.image,
-        );
+      title: result.title,
+      description: result.description,
+      image: result.image,
+      isPrivate: result.isPrivate,
+    );
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              success ? 'Issue submitted successfully' : 'Failed to submit'),
+            success ? 'Issue submitted successfully' : 'Failed to submit',
+          ),
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
@@ -276,7 +268,7 @@ class FacilityIssuesScreen extends StatelessWidget {
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: statusColor.withAlpha(60)),
+        side: BorderSide(color: statusColor.withValues(alpha: 60 / 255)),
       ),
       child: InkWell(
         onTap: () => FacilityIssueDetailScreen.show(context, issue),
@@ -299,15 +291,20 @@ class FacilityIssuesScreen extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (issue.isDeletionRequested) ...[
-                    const SizedBox(width: 8),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (issue.isDeletionRequested)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.red.withAlpha(40),
+                        color: Colors.red.withValues(alpha: 40 / 255),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.red),
                       ),
@@ -320,14 +317,44 @@ class FacilityIssuesScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ],
+                  if (issue.isPrivate)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withValues(alpha: 40 / 255),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.purple),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.lock_outline,
+                            size: 11,
+                            color: Colors.purple,
+                          ),
+                          SizedBox(width: 3),
+                          Text(
+                            'Private',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.purple,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withAlpha(40),
+                      color: statusColor.withValues(alpha: 40 / 255),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: statusColor),
                     ),
@@ -415,8 +442,10 @@ class FacilityIssuesScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       reporterName,
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -424,8 +453,7 @@ class FacilityIssuesScreen extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(
                     relativeTime(issue.createdAt),
-                    style:
-                        TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
               ),
@@ -443,7 +471,13 @@ class _IssueFormResult {
   final String title;
   final String description;
   final XFile? image;
-  _IssueFormResult(this.title, this.description, this.image);
+  final bool isPrivate;
+  _IssueFormResult(
+    this.title,
+    this.description,
+    this.image, {
+    this.isPrivate = false,
+  });
 }
 
 class _CreateIssueDialog extends StatefulWidget {
@@ -460,6 +494,7 @@ class _CreateIssueDialogState extends State<_CreateIssueDialog> {
   XFile? _pickedImage;
   bool _picking = false;
   bool _submitting = false;
+  bool _isPrivate = false;
 
   @override
   void dispose() {
@@ -493,6 +528,7 @@ class _CreateIssueDialogState extends State<_CreateIssueDialog> {
         _titleController.text.trim(),
         _descController.text.trim(),
         _pickedImage,
+        isPrivate: _isPrivate,
       ),
     );
   }
@@ -558,6 +594,71 @@ class _CreateIssueDialogState extends State<_CreateIssueDialog> {
                 label: const Text('Remove photo'),
               ),
             ],
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _isPrivate
+                    ? Colors.purple.withValues(alpha: 20 / 255)
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _isPrivate
+                      ? Colors.purple.withValues(alpha: 120 / 255)
+                      : Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.lock_outline,
+                    size: 18,
+                    color: _isPrivate
+                        ? Colors.purple
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Private issue',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Only you and office admins can see this report',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: _isPrivate,
+                    onChanged: (v) => setState(() => _isPrivate = v),
+                    trackColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    thumbColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

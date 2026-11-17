@@ -49,6 +49,7 @@ class FacilityIssue {
     this.photos = const [],
     this.deletionRequestedBy,
     this.deletionRequestedAt,
+    this.isPrivate = false,
   });
 
   final String id;
@@ -64,6 +65,7 @@ class FacilityIssue {
   final List<String> photos;
   final String? deletionRequestedBy;
   final DateTime? deletionRequestedAt;
+  final bool isPrivate;
 
   bool get isAdminResponse => adminResponse != null;
   bool get isDeletionRequested => deletionRequestedBy != null;
@@ -85,6 +87,7 @@ class FacilityIssue {
     List<String>? photos,
     String? deletionRequestedBy,
     DateTime? deletionRequestedAt,
+    bool? isPrivate,
   }) {
     return FacilityIssue(
       id: id ?? this.id,
@@ -100,6 +103,7 @@ class FacilityIssue {
       photos: photos ?? this.photos,
       deletionRequestedBy: deletionRequestedBy ?? this.deletionRequestedBy,
       deletionRequestedAt: deletionRequestedAt ?? this.deletionRequestedAt,
+      isPrivate: isPrivate ?? this.isPrivate,
     );
   }
 
@@ -125,6 +129,7 @@ class FacilityIssue {
       photos: photos,
       deletionRequestedBy: map['deletion_requested_by'] as String?,
       deletionRequestedAt: _parseDateTime(map['deletion_requested_at']),
+      isPrivate: (map['is_private'] as bool?) ?? false,
     );
   }
 

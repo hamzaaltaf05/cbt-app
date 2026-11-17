@@ -60,6 +60,7 @@ class FacilityIssuesCubit extends Cubit<FacilityIssuesState> {
     required String title,
     required String description,
     XFile? image,
+    bool isPrivate = false,
   }) async {
     emit(state.copyWith(isLoading: true));
 
@@ -88,6 +89,7 @@ class FacilityIssuesCubit extends Cubit<FacilityIssuesState> {
         'reported_by': user.id,
         'image_url': photoUrl,
         'status': 'pending',
+        'is_private': isPrivate,
       }).select().single();
 
       final newIssue = FacilityIssue.fromMap(inserted);

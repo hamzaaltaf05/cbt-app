@@ -81,13 +81,6 @@ class NotificationScreen extends StatelessWidget {
             ),
         ],
       ),
-      floatingActionButton: state.isLoading
-          ? null
-          : FloatingActionButton.extended(
-              icon: const Icon(Icons.refresh),
-              label: const Text('Refresh'),
-              onPressed: () => context.read<NotificationsCubit>().refresh(),
-            ),
       body: _buildBody(context, state.isLoading, state.errorMessage, items),
     );
   }
@@ -133,7 +126,7 @@ class NotificationScreen extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: () => context.read<NotificationsCubit>().refresh(),
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         itemCount: items.length,
         separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (_, index) => _buildItem(context, items[index]),
