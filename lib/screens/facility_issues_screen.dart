@@ -73,29 +73,34 @@ class FacilityIssuesScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Facility Issues',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Facility Issues',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    isAdmin
-                        ? 'View and manage all reports'
-                        : 'View all reports',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.white70,
+                    const SizedBox(height: 2),
+                    Text(
+                      isAdmin
+                          ? 'View and manage all reports'
+                          : 'View all reports',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.white70,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 12),
               ElevatedButton(
                 onPressed: () => _showCreateDialog(context),
                 style: ElevatedButton.styleFrom(
