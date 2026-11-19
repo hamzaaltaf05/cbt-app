@@ -6,6 +6,7 @@ import '../cubits/auth/auth_cubit.dart';
 import '../cubits/facility_issues/facility_issues_cubit.dart';
 import '../models/facility_issue.dart';
 import '../utils/relative_time.dart';
+import '../widgets/vote_control_widget.dart';
 
 /// Full detail view for a single facility issue.
 class FacilityIssueDetailScreen extends StatelessWidget {
@@ -572,6 +573,46 @@ class _IssueCard extends StatelessWidget {
                         ),
                       );
                     },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outlineVariant
+                          .withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      VoteControlWidget(
+                        score: issue.score,
+                        userVote: issue.userVote,
+                        axis: Axis.horizontal,
+                        onVote: (vote) => context
+                            .read<FacilityIssuesCubit>()
+                            .castVote(issue, vote),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Upvote if you are also experiencing this issue to help prioritize it and prevent duplicate reports.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 14),

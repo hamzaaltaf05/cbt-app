@@ -4,6 +4,8 @@ import 'package:cbt_app/cubits/auth/auth_cubit.dart';
 import 'package:cbt_app/cubits/honour_shop/honour_shop_cubit.dart';
 import 'package:cbt_app/models/shop_item.dart';
 import 'package:cbt_app/models/user_profile.dart';
+import 'package:cbt_app/screens/shop_feedback_screen.dart';
+import 'package:cbt_app/widgets/vote_control_widget.dart';
 
 /// The list of categories an item can belong to.
 /// `category` is a free-text column in Supabase, so adding a value here
@@ -523,8 +525,24 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
                             : scheme.onSurface.withValues(alpha: 0.65),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    _availabilityChip(item.isAvailable),
+                    const SizedBox(height: 5),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        _availabilityChip(item.isAvailable),
+                        VoteControlWidget(
+                          score: item.score,
+                          userVote: item.userVote,
+                          axis: Axis.horizontal,
+                          compact: true,
+                          onVote: (vote) => context
+                              .read<HonourShopCubit>()
+                              .castVote(item, vote),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -572,6 +590,17 @@ class _ShopItemsScreenState extends State<ShopItemsScreen> {
       appBar: AppBar(
         title: const Text('Honour Shop'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.forum_outlined),
+            tooltip: 'Feedback & Suggestions',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const ShopFeedbackScreen(),
+                ),
+              );
+            },
+          ),
           if (_canManageItems)
             IconButton(
               icon: const Icon(Icons.add),

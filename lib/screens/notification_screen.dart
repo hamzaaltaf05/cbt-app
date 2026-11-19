@@ -6,6 +6,7 @@ import 'package:cbt_app/cubits/notifications/notifications_cubit.dart';
 import '../models/app_notification.dart';
 import '../models/facility_issue.dart';
 import '../screens/facility_issue_detail_screen.dart';
+import '../screens/shop_feedback_screen.dart';
 
 /// The "Notifications" tab.
 ///
@@ -186,6 +187,12 @@ class NotificationScreen extends StatelessWidget {
           context.read<NotificationsCubit>().markRead(n);
           if (n.isFacility) {
             _openFacilityDetail(context, n);
+          } else if (n.isShopFeedback) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const ShopFeedbackScreen(),
+              ),
+            );
           }
         },
         child: Padding(
@@ -199,7 +206,9 @@ class NotificationScreen extends StatelessWidget {
                   Icon(
                     n.isFacility
                         ? Icons.construction
-                        : Icons.notifications_active,
+                        : n.isShopFeedback
+                            ? Icons.rate_review_outlined
+                            : Icons.notifications_active,
                     size: 20,
                     color: colorScheme.primary,
                   ),

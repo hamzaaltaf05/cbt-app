@@ -16,8 +16,17 @@ class FacilityIssuesState {
   });
 
   List<FacilityIssue> get filteredIssues {
-    if (filterStatus == null) return issues;
-    return issues.where((issue) => issue.status == filterStatus).toList();
+    final list = filterStatus == null
+        ? List<FacilityIssue>.from(issues)
+        : issues.where((issue) => issue.status == filterStatus).toList();
+
+    list.sort((a, b) {
+      final scoreCompare = b.score.compareTo(a.score);
+      if (scoreCompare != 0) return scoreCompare;
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    return list;
   }
 
   FacilityIssuesState copyWith({

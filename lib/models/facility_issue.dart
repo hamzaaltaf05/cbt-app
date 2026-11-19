@@ -50,6 +50,9 @@ class FacilityIssue {
     this.deletionRequestedBy,
     this.deletionRequestedAt,
     this.isPrivate = false,
+    this.upvotesCount = 0,
+    this.downvotesCount = 0,
+    this.userVote = 0,
   });
 
   final String id;
@@ -66,7 +69,11 @@ class FacilityIssue {
   final String? deletionRequestedBy;
   final DateTime? deletionRequestedAt;
   final bool isPrivate;
+  final int upvotesCount;
+  final int downvotesCount;
+  final int userVote; // 1, -1, or 0
 
+  int get score => upvotesCount - downvotesCount;
   bool get isAdminResponse => adminResponse != null;
   bool get isDeletionRequested => deletionRequestedBy != null;
 
@@ -88,6 +95,9 @@ class FacilityIssue {
     String? deletionRequestedBy,
     DateTime? deletionRequestedAt,
     bool? isPrivate,
+    int? upvotesCount,
+    int? downvotesCount,
+    int? userVote,
   }) {
     return FacilityIssue(
       id: id ?? this.id,
@@ -104,10 +114,13 @@ class FacilityIssue {
       deletionRequestedBy: deletionRequestedBy ?? this.deletionRequestedBy,
       deletionRequestedAt: deletionRequestedAt ?? this.deletionRequestedAt,
       isPrivate: isPrivate ?? this.isPrivate,
+      upvotesCount: upvotesCount ?? this.upvotesCount,
+      downvotesCount: downvotesCount ?? this.downvotesCount,
+      userVote: userVote ?? this.userVote,
     );
   }
 
-  factory FacilityIssue.fromMap(Map<String, dynamic> map) {
+  factory FacilityIssue.fromMap(Map<String, dynamic> map, {int userVote = 0}) {
     var raw = map['photos'];
     final photos = <String>[];
     if (raw is List) {
@@ -130,6 +143,9 @@ class FacilityIssue {
       deletionRequestedBy: map['deletion_requested_by'] as String?,
       deletionRequestedAt: _parseDateTime(map['deletion_requested_at']),
       isPrivate: (map['is_private'] as bool?) ?? false,
+      upvotesCount: (map['upvotes_count'] as num?)?.toInt() ?? 0,
+      downvotesCount: (map['downvotes_count'] as num?)?.toInt() ?? 0,
+      userVote: userVote,
     );
   }
 
@@ -146,6 +162,6 @@ class FacilityIssue {
 
   @override
   String toString() {
-    return 'FacilityIssue(id: $id, description: ${description.substring(0, description.length > 30 ? 30 : description.length)}..., status: $status, reportedBy: $reportedBy, createdAt: ${_formatDate(createdAt)}, photos: ${photos.length}, adminResponse: $adminResponse)';
+    return 'FacilityIssue(id: $id, description: ${description.substring(0, description.length > 30 ? 30 : description.length)}..., status: $status, reportedBy: $reportedBy, createdAt: ${_formatDate(createdAt)}, score: $score, photos: ${photos.length}, adminResponse: $adminResponse)';
   }
 }

@@ -5,12 +5,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cbt_app/models/facility_issue.dart';
 import 'package:cbt_app/cubits/facility_issues/facility_issues_state.dart';
+import 'package:cbt_app/services/voting_repository.dart';
 
 class FacilityIssuesCubit extends Cubit<FacilityIssuesState> {
   final SupabaseClient _client;
+  final VotingRepository _votingRepository;
   RealtimeChannel? _channel;
 
-  FacilityIssuesCubit(this._client) : super(const FacilityIssuesState()) {
+  FacilityIssuesCubit(this._client, {VotingRepository? votingRepository})
+      : _votingRepository = votingRepository ?? VotingRepository(client: _client),
+        super(const FacilityIssuesState()) {
     loadIssues();
     _subscribeRealtime();
   }
@@ -24,7 +28,18 @@ class FacilityIssuesCubit extends Cubit<FacilityIssuesState> {
           .select('*, profiles!facility_issues_reported_by_key(full_name)')
           .order('created_at', ascending: false);
 
-      final issues = rows.map((row) => FacilityIssue.fromMap(row)).toList();
+      final userVotes = await _votingRepository.fetchUserVotes(
+        targetType: 'facility_issue',
+      );
+
+      final issues = rows.map((row) {
+        final id = row['id'] as String;
+        final vote = userVotes[id] ?? 0;
+        return FacilityIssue.fromMap(row, userVote: vote);
+      }).toList();
+
+      issues.sort(_compareIssues);
+
       final Map<String, String> reporterNames = {};
       for (final row in rows) {
         final issue = FacilityIssue.fromMap(row);
@@ -48,11 +63,77 @@ class FacilityIssuesCubit extends Cubit<FacilityIssuesState> {
     }
   }
 
+  /// Comparator: highest score first; ties broken by newest first.
+  static int _compareIssues(FacilityIssue a, FacilityIssue b) {
+    final scoreCompare = b.score.compareTo(a.score);
+    if (scoreCompare != 0) return scoreCompare;
+    return b.createdAt.compareTo(a.createdAt);
+  }
+
   void setFilter(IssueStatus? status) {
     if (status == null) {
       emit(state.copyWith(clearFilter: true));
     } else {
       emit(state.copyWith(filterStatus: status));
+    }
+  }
+
+  /// Instant optimistic vote toggle on facility issues
+  Future<void> castVote(FacilityIssue issue, int requestedVote) async {
+    final previousIssues = List<FacilityIssue>.from(state.issues);
+    final nextVote = issue.userVote == requestedVote ? 0 : requestedVote;
+
+    int newUp = issue.upvotesCount;
+    int newDown = issue.downvotesCount;
+
+    if (issue.userVote == 1) newUp--;
+    if (issue.userVote == -1) newDown--;
+
+    if (nextVote == 1) newUp++;
+    if (nextVote == -1) newDown++;
+
+    newUp = newUp < 0 ? 0 : newUp;
+    newDown = newDown < 0 ? 0 : newDown;
+
+    final updatedIssue = issue.copyWith(
+      userVote: nextVote,
+      upvotesCount: newUp,
+      downvotesCount: newDown,
+    );
+
+    final updatedIssues = state.issues.map((i) {
+      return i.id == issue.id ? updatedIssue : i;
+    }).toList();
+    updatedIssues.sort(_compareIssues);
+
+    emit(state.copyWith(issues: updatedIssues));
+
+    try {
+      final res = await _votingRepository.castVote(
+        targetType: 'facility_issue',
+        targetId: issue.id,
+        vote: nextVote,
+      );
+
+      if (res.isNotEmpty && res['upvotes'] != null && res['downvotes'] != null) {
+        final confirmedIssues = state.issues.map((i) {
+          if (i.id == issue.id) {
+            return i.copyWith(
+              upvotesCount: (res['upvotes'] as num).toInt(),
+              downvotesCount: (res['downvotes'] as num).toInt(),
+              userVote: (res['user_vote'] as num).toInt(),
+            );
+          }
+          return i;
+        }).toList();
+        confirmedIssues.sort(_compareIssues);
+        emit(state.copyWith(issues: confirmedIssues));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+        issues: previousIssues,
+        errorMessage: 'Failed to update vote: $e',
+      ));
     }
   }
 
@@ -93,15 +174,16 @@ class FacilityIssuesCubit extends Cubit<FacilityIssuesState> {
       }).select().single();
 
       final newIssue = FacilityIssue.fromMap(inserted);
+      final updatedList = [newIssue, ...state.issues]..sort(_compareIssues);
       emit(state.copyWith(
-        issues: [newIssue, ...state.issues],
+        issues: updatedList,
         isLoading: false,
       ));
       return true;
     } catch (e) {
       emit(state.copyWith(
         isLoading: false,
-        errorMessage: 'Failed to report issue: $e',
+        errorMessage: 'Failed to create issue: $e',
       ));
       return false;
     }
@@ -148,6 +230,14 @@ class FacilityIssuesCubit extends Cubit<FacilityIssuesState> {
       return false;
     }
   }
+
+  /// Alias for backward compatibility
+  Future<bool> updateIssueStatus({
+    required String id,
+    required IssueStatus status,
+    String? adminResponse,
+  }) =>
+      updateIssue(id: id, status: status, adminResponse: adminResponse);
 
   /// Request reporter to delete issue (for office admins)
   Future<bool> requestDeletion(String id) async {

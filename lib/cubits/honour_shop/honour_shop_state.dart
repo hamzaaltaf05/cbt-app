@@ -16,7 +16,7 @@ class HonourShopState {
   });
 
   List<ShopItem> get filteredItems {
-    return items.where((item) {
+    final list = items.where((item) {
       final matchesCategory = selectedCategory == 'All' ||
           item.category.trim().toLowerCase() ==
               selectedCategory.trim().toLowerCase();
@@ -24,6 +24,14 @@ class HonourShopState {
           item.name.toLowerCase().contains(searchQuery.trim().toLowerCase());
       return matchesCategory && matchesSearch;
     }).toList();
+
+    list.sort((a, b) {
+      final scoreCompare = b.score.compareTo(a.score);
+      if (scoreCompare != 0) return scoreCompare;
+      return a.name.compareTo(b.name);
+    });
+
+    return list;
   }
 
   HonourShopState copyWith({

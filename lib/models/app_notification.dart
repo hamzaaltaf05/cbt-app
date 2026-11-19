@@ -3,7 +3,7 @@
 /// Mirrors a row in the `public.notifications` table. The optional
 /// [refType] / [refId] pair is the deep-link target: when present the
 /// notification screen can navigate to the related screen (e.g. a facility
-/// issue detail view).
+/// issue detail view or honour shop feedback post).
 class AppNotification {
   const AppNotification({
     required this.id,
@@ -20,13 +20,13 @@ class AppNotification {
   final String id;
   final String userId;
 
-  /// Machine type, e.g. `facility_reported`, `shop_item_added`.
+  /// Machine type, e.g. `facility_reported`, `shop_item_added`, `shop_feedback_created`, `shop_feedback_response`.
   final String type;
 
   final String title;
   final String? body;
 
-  /// Optional deep-link target (e.g. `facility_issue`).
+  /// Optional deep-link target (e.g. `facility_issue`, `shop_feedback`, `shop_item`).
   final String? refType;
   final String? refId;
 
@@ -37,8 +37,15 @@ class AppNotification {
   String? get facilityIssueId =>
       refType == 'facility_issue' ? refId : null;
 
+  /// The related shop feedback post id, if this notification points at one.
+  String? get shopFeedbackId =>
+      refType == 'shop_feedback' ? refId : null;
+
   /// True when tapping this notification should open the facility detail.
   bool get isFacility => refType == 'facility_issue';
+
+  /// True when tapping this notification should open shop feedback.
+  bool get isShopFeedback => refType == 'shop_feedback';
 
   /// Human-friendly grouping label used for section headers.
   String get groupLabel {
@@ -52,6 +59,9 @@ class AppNotification {
       case 'shop_item_updated':
       case 'shop_item_removed':
         return 'Shop';
+      case 'shop_feedback_created':
+      case 'shop_feedback_response':
+        return 'Shop Feedback';
       default:
         return 'General';
     }
